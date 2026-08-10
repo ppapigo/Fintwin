@@ -82,6 +82,45 @@ class OpenAiResponseParserTest {
                 .doesNotContain("\"amount\":", "\"netWorth\":", "\"profileId\":");
     }
 
+    @Test
+    void structuredOutputSchemaConstrainsFieldsByEventShape() throws Exception {
+        var schema = objectMapper.readTree(OpenAiPromptResources.load().schema());
+        var eventAlternatives = schema.get("properties").get("events").get("items").get("anyOf");
+
+        assertThat(eventAlternatives).hasSize(4);
+
+        var oneTime = findAlternative(eventAlternatives, "ONE_TIME_EXPENSE");
+        assertThat(oneTime.get("properties").get("changeDirection").get("type").asText())
+                .isEqualTo("null");
+        assertThat(oneTime.get("properties").get("startDateReference").get("type").asText())
+                .isEqualTo("null");
+
+        var recurring = findAlternative(eventAlternatives, "RECURRING_EXPENSE_CHANGE");
+        assertThat(recurring.get("properties").get("effectiveDateReference").get("type").asText())
+                .isEqualTo("null");
+        assertThat(recurring.get("properties").get("amountReference").get("type").asText())
+                .isEqualTo("null");
+
+        var incomePause = findAlternative(eventAlternatives, "INCOME_PAUSE");
+        assertThat(incomePause.get("properties").get("changeDirection").get("type").asText())
+                .isEqualTo("null");
+        assertThat(incomePause.get("properties").get("amountReference").get("type").asText())
+                .isEqualTo("null");
+        assertThat(incomePause.get("properties").get("monthlyDeltaReference").get("type").asText())
+                .isEqualTo("null");
+    }
+
+    private tools.jackson.databind.JsonNode findAlternative(tools.jackson.databind.JsonNode alternatives,
+                                                              String eventType) {
+        for (var alternative : alternatives) {
+            if (alternative.get("properties").get("eventType").get("enum").toString()
+                    .contains("\"" + eventType + "\"")) {
+                return alternative;
+            }
+        }
+        throw new AssertionError("Missing event schema alternative: " + eventType);
+    }
+
     private void assertCode(String response, AiErrorCode code) {
         assertThatThrownBy(() -> parser.parse(bytes(response)))
                 .isInstanceOfSatisfying(AiAdapterException.class,

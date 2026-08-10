@@ -5,30 +5,99 @@
   "properties": {
     "intent": {
       "type": "string",
+      "description": "The single supported FinTwin intent represented by the sanitized scenario.",
       "enum": ["PURCHASE", "EXPENSE_CHANGE", "INCOME_CHANGE", "INCOME_PAUSE", "INVESTMENT_CHANGE", "DEBT_REPAYMENT", "MULTI_EVENT", "UNKNOWN"]
     },
     "events": {
       "type": "array",
       "maxItems": 20,
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
-        "properties": {
-          "eventId": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"},
-          "eventType": {"type": ["string", "null"], "enum": ["ONE_TIME_EXPENSE", "RECURRING_EXPENSE_CHANGE", "INCOME_CHANGE", "INCOME_PAUSE", "INVESTMENT_CONTRIBUTION_CHANGE", "EXTRA_DEBT_REPAYMENT", null]},
-          "changeDirection": {"type": ["string", "null"], "enum": ["INCREASE", "DECREASE", null]},
-          "effectiveDateExpression": {"type": ["string", "null"], "maxLength": 100},
-          "effectiveDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
-          "startDateExpression": {"type": ["string", "null"], "maxLength": 100},
-          "startDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
-          "endDateExpression": {"type": ["string", "null"], "maxLength": 100},
-          "endDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
-          "durationReference": {"type": ["string", "null"], "pattern": "^DURATION_[1-9][0-9]*$"},
-          "amountReference": {"type": ["string", "null"], "pattern": "^MONEY_[1-9][0-9]*$"},
-          "monthlyDeltaReference": {"type": ["string", "null"], "pattern": "^MONEY_[1-9][0-9]*$"},
-          "description": {"type": ["string", "null"], "maxLength": 200}
-        }
+        "anyOf": [
+          {
+            "type": "object",
+            "description": "A one-time expense or extra debt repayment. Only effective date and amount selectors are applicable.",
+            "additionalProperties": false,
+            "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
+            "properties": {
+              "eventId": {"$ref": "#/$defs/eventId"},
+              "eventType": {"type": "string", "enum": ["ONE_TIME_EXPENSE", "EXTRA_DEBT_REPAYMENT"]},
+              "changeDirection": {"type": "null"},
+              "effectiveDateExpression": {"$ref": "#/$defs/dateExpression"},
+              "effectiveDateReference": {"$ref": "#/$defs/dateReference"},
+              "startDateExpression": {"type": "null"},
+              "startDateReference": {"type": "null"},
+              "endDateExpression": {"type": "null"},
+              "endDateReference": {"type": "null"},
+              "durationReference": {"type": "null"},
+              "amountReference": {"$ref": "#/$defs/moneyReference"},
+              "monthlyDeltaReference": {"type": "null"},
+              "description": {"$ref": "#/$defs/description"}
+            }
+          },
+          {
+            "type": "object",
+            "description": "A recurring monthly expense, income, or investment contribution change. A start selector, one end selector, direction, and monthly delta are applicable.",
+            "additionalProperties": false,
+            "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
+            "properties": {
+              "eventId": {"$ref": "#/$defs/eventId"},
+              "eventType": {"type": "string", "enum": ["RECURRING_EXPENSE_CHANGE", "INCOME_CHANGE", "INVESTMENT_CONTRIBUTION_CHANGE"]},
+              "changeDirection": {"type": ["string", "null"], "enum": ["INCREASE", "DECREASE", null]},
+              "effectiveDateExpression": {"type": "null"},
+              "effectiveDateReference": {"type": "null"},
+              "startDateExpression": {"$ref": "#/$defs/dateExpression"},
+              "startDateReference": {"$ref": "#/$defs/dateReference"},
+              "endDateExpression": {"$ref": "#/$defs/dateExpression"},
+              "endDateReference": {"$ref": "#/$defs/dateReference"},
+              "durationReference": {"$ref": "#/$defs/durationReference"},
+              "amountReference": {"type": "null"},
+              "monthlyDeltaReference": {"$ref": "#/$defs/moneyReference"},
+              "description": {"$ref": "#/$defs/description"}
+            }
+          },
+          {
+            "type": "object",
+            "description": "An income pause. A start selector and exactly one end-date or duration selector are applicable; no income amount is supplied by the AI.",
+            "additionalProperties": false,
+            "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
+            "properties": {
+              "eventId": {"$ref": "#/$defs/eventId"},
+              "eventType": {"type": "string", "enum": ["INCOME_PAUSE"]},
+              "changeDirection": {"type": "null"},
+              "effectiveDateExpression": {"type": "null"},
+              "effectiveDateReference": {"type": "null"},
+              "startDateExpression": {"$ref": "#/$defs/dateExpression"},
+              "startDateReference": {"$ref": "#/$defs/dateReference"},
+              "endDateExpression": {"$ref": "#/$defs/dateExpression"},
+              "endDateReference": {"$ref": "#/$defs/dateReference"},
+              "durationReference": {"$ref": "#/$defs/durationReference"},
+              "amountReference": {"type": "null"},
+              "monthlyDeltaReference": {"type": "null"},
+              "description": {"$ref": "#/$defs/description"}
+            }
+          },
+          {
+            "type": "object",
+            "description": "An incomplete event whose type is unknown. Event-specific fields must remain null and missingFields must describe the gap.",
+            "additionalProperties": false,
+            "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
+            "properties": {
+              "eventId": {"$ref": "#/$defs/eventId"},
+              "eventType": {"type": "null"},
+              "changeDirection": {"type": "null"},
+              "effectiveDateExpression": {"type": "null"},
+              "effectiveDateReference": {"type": "null"},
+              "startDateExpression": {"type": "null"},
+              "startDateReference": {"type": "null"},
+              "endDateExpression": {"type": "null"},
+              "endDateReference": {"type": "null"},
+              "durationReference": {"type": "null"},
+              "amountReference": {"type": "null"},
+              "monthlyDeltaReference": {"type": "null"},
+              "description": {"$ref": "#/$defs/description"}
+            }
+          }
+        ]
       }
     },
     "missingFields": {
@@ -38,6 +107,40 @@
         "type": "string",
         "enum": ["EVENT_TYPE", "EFFECTIVE_DATE", "START_DATE", "END_DATE", "DURATION", "AMOUNT", "MONTHLY_DELTA", "DESCRIPTION"]
       }
+    }
+  },
+  "$defs": {
+    "eventId": {
+      "type": "string",
+      "description": "A stable non-sensitive identifier for this event, containing only letters, digits, underscore, or hyphen.",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+    },
+    "dateExpression": {
+      "type": ["string", "null"],
+      "description": "A supported relative date phrase only when no DATE reference is present; otherwise null.",
+      "maxLength": 100
+    },
+    "dateReference": {
+      "type": ["string", "null"],
+      "description": "A DATE reference copied verbatim without brackets when no relative date expression is present; otherwise null.",
+      "pattern": "^DATE_[1-9][0-9]*$"
+    },
+    "durationReference": {
+      "type": ["string", "null"],
+      "description": "A DURATION reference copied verbatim without brackets, or null when an end date is used or the value is missing.",
+      "pattern": "^DURATION_[1-9][0-9]*$"
+    },
+    "moneyReference": {
+      "type": ["string", "null"],
+      "description": "A MONEY reference copied verbatim without brackets, or null when the value is missing.",
+      "pattern": "^MONEY_[1-9][0-9]*$"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "A short semantic label with no direct financial value, date, or reference token; null only when DESCRIPTION is missing.",
+      "maxLength": 200
     }
   }
 }
