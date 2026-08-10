@@ -6,41 +6,15 @@ import { getCurrentProfile } from "../api/financialProfileApi";
 import { LoadingScreen } from "../components/common/LoadingScreen";
 import { StatusMessage } from "../components/common/StatusMessage";
 import { BaselineResults } from "../components/simulation/BaselineResults";
+import { SimulationAssumptionFields } from "../components/simulation/SimulationAssumptionFields";
+import { createSimulationAssumptionValues } from "../simulation/simulationAssumptions";
 import { formatWon } from "../utils/money";
-
-const RATE_FIELDS = [
-  ["annualIncomeGrowthRate", "연 소득 증가율", "매월 복리로 소득에 반영됩니다."],
-  ["annualInflationRate", "연 물가상승률", "고정·변동지출에 매월 복리로 반영됩니다."],
-  ["annualDepositInterestRate", "연 예금이율", "월초 유동자산에 적용됩니다."],
-  ["annualInvestmentReturnRate", "연 투자수익률", "수익 또는 손실 가정이며 예측값이 아닙니다."],
-];
-
-function currentYearMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function initialValues() {
-  return {
-    startYearMonth: currentYearMonth(),
-    horizonMonths: 60,
-    annualIncomeGrowthRate: "0",
-    annualInflationRate: "0",
-    annualDepositInterestRate: "0",
-    annualInvestmentReturnRate: "0",
-    monthlyDebtPayment: "0",
-  };
-}
-
-function hasDebt(value) {
-  return !/^0+(?:\.0+)?$/.test(String(value ?? "0"));
-}
 
 export function FinancialTwinPage() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
-  const [values, setValues] = useState(initialValues);
+  const [values, setValues] = useState(createSimulationAssumptionValues);
   const [fieldErrors, setFieldErrors] = useState({});
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -106,8 +80,6 @@ export function FinancialTwinPage() {
     return <StatusMessage tone="error" title="Financial Profile을 불러오지 못했습니다" description="잠시 후 다시 시도해주세요." actionLabel="다시 불러오기" onAction={loadProfile} />;
   }
 
-  const profileHasDebt = hasDebt(profile.totalLoanBalance);
-
   return (
     <section className="content-page financial-twin-page">
       <div className="twin-page-heading">
@@ -131,53 +103,7 @@ export function FinancialTwinPage() {
 
         {requestError && <div className="form-banner form-banner--error" role="alert">{requestError}</div>}
 
-        <div className="assumption-primary-grid">
-          <div className="assumption-field">
-            <label htmlFor="startYearMonth">시작 연월</label>
-            <input id="startYearMonth" name="startYearMonth" type="month" value={values.startYearMonth} onChange={updateValue} disabled={submitting} aria-invalid={Boolean(fieldErrors.startYearMonth)} />
-            {fieldErrors.startYearMonth && <p className="field-error">{fieldErrors.startYearMonth}</p>}
-          </div>
-          <fieldset className="horizon-field">
-            <legend>기간</legend>
-            <div className="horizon-options">
-              {[12, 36, 60].map((months) => (
-                <label key={months} className={values.horizonMonths === months ? "horizon-option horizon-option--active" : "horizon-option"}>
-                  <input type="radio" name="horizonMonths" value={months} checked={values.horizonMonths === months} onChange={updateValue} disabled={submitting} />
-                  <strong>{months / 12}년</strong><span>{months}개월</span>
-                </label>
-              ))}
-            </div>
-            {fieldErrors.horizonMonths && <p className="field-error">{fieldErrors.horizonMonths}</p>}
-          </fieldset>
-        </div>
-
-        <div className="assumption-rate-grid">
-          {RATE_FIELDS.map(([name, label, help]) => (
-            <div className="assumption-field" key={name}>
-              <label htmlFor={name}>{label}</label>
-              <div className={fieldErrors[name] ? "assumption-input assumption-input--error" : "assumption-input"}>
-                <input id={name} name={name} type="text" inputMode="decimal" value={values[name]} onChange={updateValue} disabled={submitting} aria-invalid={Boolean(fieldErrors[name])} />
-                <span>%</span>
-              </div>
-              <p className="field-help">{help}</p>
-              {fieldErrors[name] && <p className="field-error">{fieldErrors[name]}</p>}
-            </div>
-          ))}
-        </div>
-
-        <div className="debt-assumption-row">
-          <div>
-            <label htmlFor="monthlyDebtPayment">월 대출상환액</label>
-            <p>{profileHasDebt ? `현재 대출잔액 ${formatWon(profile.totalLoanBalance)}을 기준으로 계산합니다.` : "현재 부채가 없어 엔진에서 0원으로 정규화됩니다."}</p>
-          </div>
-          <div>
-            <div className={fieldErrors.monthlyDebtPayment ? "assumption-input assumption-input--error" : "assumption-input"}>
-              <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="text" inputMode="decimal" value={values.monthlyDebtPayment} onChange={updateValue} disabled={submitting} aria-invalid={Boolean(fieldErrors.monthlyDebtPayment)} />
-              <span>원/월</span>
-            </div>
-            {fieldErrors.monthlyDebtPayment && <p className="field-error">{fieldErrors.monthlyDebtPayment}</p>}
-          </div>
-        </div>
+        <SimulationAssumptionFields values={values} fieldErrors={fieldErrors} profile={profile} disabled={submitting} onChange={updateValue} />
 
         <div className="assumption-actions">
           <p><strong>저장하지 않는 일회성 계산</strong><br />같은 Profile과 가정에는 같은 결과가 나옵니다.</p>

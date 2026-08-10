@@ -1,4 +1,5 @@
 import { apiRequest } from "./apiClient";
+import { buildSimulationRequestFields, validateSimulationAssumptions } from "../simulation/simulationAssumptions";
 
 const RATE_FIELDS = Object.freeze([
   "annualIncomeGrowthRate",
@@ -37,10 +38,6 @@ const DECIMAL_NUMBER_PATTERN = new RegExp(
   `(\\"(?:${DECIMAL_FIELDS.join("|")})\\"\\s*:\\s*)(-?\\d+(?:\\.\\d+)?)`,
   "g",
 );
-const YEAR_MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
-const RATE_PATTERN = /^-?\d{1,3}(?:\.\d{1,6})?$/;
-const MONEY_PATTERN = /^\d{1,17}(?:\.\d{1,2})?$/;
-const HORIZONS = new Set([12, 36, 60]);
 
 function decimalText(value) {
   return value == null ? "0" : String(value);
@@ -105,7 +102,10 @@ function parseSimulationJson(text) {
 }
 
 export function normalizeBaselineSimulation(text) {
-  const payload = parseSimulationJson(text);
+  return normalizeBaselineSimulationPayload(parseSimulationJson(text));
+}
+
+export function normalizeBaselineSimulationPayload(payload) {
   return {
     financialProfileVersion: Number(payload?.financialProfileVersion) || 0,
     startYearMonth: typeof payload?.startYearMonth === "string" ? payload.startYearMonth : "",
@@ -131,50 +131,11 @@ export function normalizeBaselineSimulation(text) {
 }
 
 export function buildBaselineSimulationPayload(values) {
-  return {
-    startYearMonth: String(values.startYearMonth ?? "").trim(),
-    horizonMonths: Number(values.horizonMonths),
-    assumptions: {
-      annualIncomeGrowthRate: String(values.annualIncomeGrowthRate ?? "").trim(),
-      annualInflationRate: String(values.annualInflationRate ?? "").trim(),
-      annualDepositInterestRate: String(values.annualDepositInterestRate ?? "").trim(),
-      annualInvestmentReturnRate: String(values.annualInvestmentReturnRate ?? "").trim(),
-      monthlyDebtPayment: String(values.monthlyDebtPayment ?? "").trim(),
-    },
-  };
-}
-
-function validateRate(value, minimum) {
-  const text = String(value ?? "").trim();
-  if (!RATE_PATTERN.test(text)) return false;
-  const number = Number(text);
-  return Number.isFinite(number) && number >= minimum && number <= 100;
+  return buildSimulationRequestFields(values);
 }
 
 export function validateBaselineSimulation(values) {
-  const errors = {};
-  if (!YEAR_MONTH_PATTERN.test(String(values.startYearMonth ?? ""))) {
-    errors.startYearMonth = "시작 연월을 선택해주세요.";
-  }
-  if (!HORIZONS.has(Number(values.horizonMonths))) {
-    errors.horizonMonths = "기간은 12, 36, 60개월 중 하나여야 합니다.";
-  }
-  if (!validateRate(values.annualIncomeGrowthRate, -100)) {
-    errors.annualIncomeGrowthRate = "-100%부터 100% 사이, 소수점 6자리까지 입력해주세요.";
-  }
-  if (!validateRate(values.annualInflationRate, -100)) {
-    errors.annualInflationRate = "-100%부터 100% 사이, 소수점 6자리까지 입력해주세요.";
-  }
-  if (!validateRate(values.annualDepositInterestRate, 0)) {
-    errors.annualDepositInterestRate = "0%부터 100% 사이, 소수점 6자리까지 입력해주세요.";
-  }
-  if (!validateRate(values.annualInvestmentReturnRate, -100)) {
-    errors.annualInvestmentReturnRate = "-100%부터 100% 사이, 소수점 6자리까지 입력해주세요.";
-  }
-  if (!MONEY_PATTERN.test(String(values.monthlyDebtPayment ?? "").trim())) {
-    errors.monthlyDebtPayment = "0원 이상, 소수점 2자리까지 입력해주세요.";
-  }
-  return errors;
+  return validateSimulationAssumptions(values);
 }
 
 export async function runBaselineSimulation(values) {

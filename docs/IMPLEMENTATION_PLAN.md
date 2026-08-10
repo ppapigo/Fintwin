@@ -131,6 +131,16 @@
 - 완료 조건: TypeScript 없이 Validation 오류와 인증 상태를 안전하게 처리한다.
 - 테스트: 컴포넌트, API mocking, 접근성, 주요 사용자 E2E 흐름.
 
+### 13단계 구현 상태 (진행 중)
+
+- 완료: OAuth2 Session·CSRF, Financial Profile 생성·조회·수정·버전 이력, `/twin` Baseline 대시보드.
+- 완료: `/what-if` Privacy-first 화면. 자연어는 Preview SAFE와 명시적 승인 후에만 Agent API를 호출하며, 직접 입력은 6종 구조화 이벤트를 Compare API로 보내고 AI를 호출하지 않는다.
+- 공통화: `/twin`과 `/what-if`가 같은 Assumption 상태·Validation·요청 변환 Component를 사용한다. Compare와 Agent 응답은 계산 없는 표시용 View Model로 매핑한다.
+- Privacy: 자연어 원문·Preview·결과를 브라우저 저장소, Query, Console, Analytics에 남기지 않고 요청·표시에서 내부 User/Profile ID와 Reference 실제값을 제거한다.
+- 완료 조건/테스트: SAFE/BLOCKED, 승인 무효화, Agent 네 상태, AI 장애 fallback, 이벤트 6종·최대 20개·범위·조건부 필드, 직접 입력 AI 0회, Chart·Checkpoint·Impact·Risk·Explanation·월별 Table Mapping을 자동 검증한다.
+- 현재 한계: Agent 자연어 결과에는 월별 Series·Checkpoint·정규화 Event가 없고 Compare 월별 DTO에는 월별 Delta가 없다. Frontend 재계산 없이 제한을 명시한다.
+- 상세 문서: `docs/FRONTEND_WHAT_IF.md`.
+
 ## 14. Docker
 
 - 목표: Java 21 Temurin 기반 재현 가능한 백엔드 이미지를 만든다.
