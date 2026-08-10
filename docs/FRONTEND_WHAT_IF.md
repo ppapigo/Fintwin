@@ -13,7 +13,7 @@
 → POST /api/agent/natural-language
 → 로컬 검증·Reference 재결합
 → 결정론적 ScenarioSimulationService / MonthlyFinancialSimulationEngine
-→ 규칙 기반 Risk·Explanation과 요약 결과
+→ 전체 Scenario Comparison과 규칙 기반 Risk·Explanation
 ```
 
 Preview가 `BLOCKED`이면 외부 AI 호출과 실행을 막고 PII 유형만 표시한다. `SAFE`이면 Privacy Mode, 토큰화 문장, Reference Type, 외부 전송 필드 이름만 표시한다. Reference ID, 실제 금융값, Reference 대응표는 표시하지 않는다. 문장을 수정하면 Preview와 승인을 즉시 폐기한다.
@@ -41,7 +41,7 @@ OpenAI가 비활성화되거나 timeout, rate limit, refusal, schema 위반이 �
 
 `SimulationAssumptionFields`와 `simulationAssumptions.js`를 `/twin`과 `/what-if`가 공유한다. 시작 연월, 12·36·60개월, 네 가지 연율, 월 대출상환액의 상태·검증·요청 변환을 중복 구현하지 않는다.
 
-`scenarioViewModel.js`는 두 응답을 표시용 View Model로 매핑한다. 이 계층은 순자산, Delta, Checkpoint, 영향 기여도를 계산하거나 Backend 오류를 보정하지 않는다. 응답의 내부 Profile ID는 API 정규화 단계에서 제거하고 Profile Version만 표시한다. 직접 Compare 결과는 다음을 표시한다.
+`scenarioViewModel.js`는 두 응답을 같은 표시용 View Model로 매핑한다. 이 계층은 순자산, Delta, Checkpoint, 영향 기여도를 계산하거나 Backend 오류를 보정하지 않는다. 응답의 내부 Profile ID는 API 정규화 단계에서 제거하고 Profile Version만 표시한다. 직접 Compare와 상세 계약을 가진 자연어 완료 결과는 다음을 같은 Component로 표시한다.
 
 - 최종 순자산·유동자산·부채·누적 지표 비교
 - 월별 Baseline 점선과 What-if 실선 Chart
@@ -50,7 +50,9 @@ OpenAI가 비활성화되거나 timeout, rate limit, refusal, schema 위반이 �
 - 정규화 이벤트와 서비스 경고
 - 60개월 월별 상세 Table
 
-자연어 Agent 응답의 현재 `ScenarioAgentToolResult`는 최종 요약만 제공하며 월별 Series, Checkpoint, 정규화 Event 상세를 포함하지 않는다. Frontend는 이를 추정하지 않고 해당 제한을 화면에 표시한다. 직접 Compare 월별 DTO에도 월별 Delta가 없으므로 Table은 `API 미제공`으로 표시하고 재계산하지 않는다.
+자연어 Agent 응답의 `typedResult.comparisonDetails`는 직접 Compare와 같은 의미의 전체 결과를 제공한다. 자연어 경로는 여기에 Agent Risk·Rule-based Explanation·Trace·AI Metadata를 함께 표시한다. 상세 계약이 없는 이전 응답은 요약과 명시적 `API 미제공` 안내로 안전하게 fallback한다. 직접 Compare 월별 DTO에는 월별 Delta가 없으므로 두 경로 모두 Table에서 `API 미제공`으로 표시하고 재계산하지 않는다.
+
+같은 정규화 Event와 Assumption이면 자연어와 직접 입력의 Profile Version, Baseline·What-if Series, Checkpoint, Final, Impact와 Warning이 같아야 한다. Frontend는 이 일치를 만들기 위한 추가 Compare 호출이나 보완 계산을 하지 않고 Backend 응답만 표시한다. 전체 Series 추가로 응답은 커졌지만 Browser 저장소나 로그에 보존하지 않는다.
 
 ## 오류 처리
 
@@ -78,7 +80,7 @@ Backend는 별도 터미널에서 `gradlew.bat bootRun --args='--spring.profiles
 
 ## 현재 한계
 
-- 자연어 응답에는 전체 월별 Series·Checkpoint·정규화 Event가 없다.
 - 직접 Compare 월별 응답에는 월별 Delta가 없다.
 - 결과 저장, CSV 다운로드, Scenario Lab, Goal UI, 상품 추천은 범위 밖이다.
 - 자연어 Preview가 SAFE여도 AI Provider 가용성을 보장하지 않는다.
+- 실제 AI E2E는 Adapter와 Key가 활성화된 환경에서만 가능하며, 2026-08-10 검증은 Test Double 기반 계약 테스트만 수행했다.

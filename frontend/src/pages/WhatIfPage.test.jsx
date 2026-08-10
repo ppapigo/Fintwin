@@ -68,12 +68,18 @@ const DIRECT_RESULT = {
   horizonMonths: 60,
   assumptions: {},
   normalizedEvents: [{ eventId: "event-1", eventType: "ONE_TIME_EXPENSE", effectiveYearMonth: "2026-09", amount: "1000000.00", monthlyDelta: null, description: "자동차 계약금" }],
-  baseline: { monthlyResults: [MONTH], checkpoints: [{ ...MONTH, monthNumber: 12, yearMonth: "2027-07" }], calculationBasis: { disclaimer: "예측이나 보장이 아닙니다." } },
+  baseline: { monthlyResults: [MONTH], checkpoints: [{ ...MONTH, monthNumber: 12, yearMonth: "2027-07" }], calculationBasis: { monthlyRateFormula: "annual percentage / 100 / 12", moneyRounding: "2 decimals, HALF_UP", savingsTreatment: "liquid assets", investmentTreatment: "asset transfer", disclaimer: "예측이나 보장이 아닙니다." } },
   whatIf: { monthlyResults: [{ ...MONTH, liquidAssets: "4000000.00", totalFinancialAssets: "6000000.00", netWorth: "6000000.00" }], checkpoints: [{ ...MONTH, monthNumber: 12, yearMonth: "2027-07", liquidAssets: "4000000.00", totalFinancialAssets: "6000000.00", netWorth: "6000000.00" }] },
   checkpointComparisons: [{ monthNumber: 12, yearMonth: "2027-07", liquidAssetsDelta: "-1000000.00", investmentAssetsDelta: "0.00", totalFinancialAssetsDelta: "-1000000.00", debtDelta: "0.00", netWorthDelta: "-1000000.00" }],
   finalComparison: { netWorthDelta: "-1000000.00", debtDelta: "0.00", cumulativeIncomeDelta: "0.00", cumulativeConsumptionDelta: "1000000.00" },
   impactSummary: { consumptionDelta: "1000000.00", netWorthDelta: "-1000000.00", residualDelta: "0.00" },
   warnings: [],
+};
+const FULL_NATURAL_RESULT = {
+  ...NATURAL_RESULT,
+  typedResult: { ...NATURAL_RESULT.typedResult, comparisonDetails: DIRECT_RESULT },
+  risks: [{ code: "NET_WORTH_DECREASE", severity: "WARNING", evidenceField: "typedResult.netWorthDelta", affectedYearMonth: null, summary: "순자산이 감소합니다." }],
+  explanation: { headline: "비교 결과", summary: "순자산 차이는 -100만원입니다.", evidence: [], assumptionNotice: "입력 가정 기준", disclaimer: "투자 조언이 아닙니다." },
 };
 
 function renderPage() {
@@ -165,6 +171,35 @@ describe("WhatIfPage", () => {
     expect(await screen.findByText("자연어 API는 월별 Series와 Checkpoint를 반환하지 않습니다.")).toBeInTheDocument();
     expect(screen.getByText("AI 사용 예")).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /월별/ })).not.toBeInTheDocument();
+  });
+
+  it("reuses the full direct comparison UI for a completed natural-language result", async () => {
+    const user = userEvent.setup();
+    vi.mocked(previewScenarioPayload).mockResolvedValue(SAFE_PREVIEW);
+    vi.mocked(runNaturalLanguageWhatIf).mockResolvedValue(FULL_NATURAL_RESULT);
+    renderPage();
+
+    await approveSafePreview(user);
+    await user.click(screen.getByRole("button", { name: "시뮬레이션 실행" }));
+
+    expect(await screen.findByRole("img", { name: /월별 순자산 비교 그래프/ })).toBeInTheDocument();
+    expect(screen.getByText("PROFILE V4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "1·3·5년 비교" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "영향 원인 분해" })).toBeInTheDocument();
+    expect(screen.getByText("자동차 계약금")).toBeInTheDocument();
+    expect(screen.getByText("순자산이 감소합니다.")).toBeInTheDocument();
+    expect(screen.getByText("순자산 차이는 -100만원입니다.")).toBeInTheDocument();
+    expect(screen.getByText("2 decimals, HALF_UP")).toBeInTheDocument();
+    expect(screen.getByText("예측이나 보장이 아닙니다.")).toBeInTheDocument();
+    expect(screen.queryByText("자연어 API는 월별 Series와 Checkpoint를 반환하지 않습니다.")).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("비교 지표"), "remainingDebt");
+    expect(screen.getByRole("img", { name: /월별 부채 비교 그래프/ })).toBeInTheDocument();
+    await user.click(screen.getByText(/월별 상세 비교/));
+    expect(screen.getByRole("columnheader", { name: "What-if 순자산" })).toBeInTheDocument();
+    expect(runNaturalLanguageWhatIf).toHaveBeenCalledOnce();
+    expect(compareScenario).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toMatch(/financialProfileId|userId/);
   });
 
   it("renders information-gap questions and the actual zero tool-call count", async () => {

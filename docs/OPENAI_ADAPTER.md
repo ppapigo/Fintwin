@@ -126,6 +126,10 @@ $env:OPENAI_MODEL='gpt-5.6-luna'
 
 `scenarioText`만 Privacy Boundary를 거쳐 외부로 나간다. Assumption은 로컬 AgentCommand에만 사용한다. 요청에서 사용자 ID나 Profile ID를 받지 않고 `CurrentUserIdProvider`를 사용한다. 누락 필드가 있으면 `NEEDS_INPUT`, `toolCallCount=0`으로 반환한다.
 
+완료 응답의 `typedResult.comparisonDetails`에는 Profile Version, 적용 Assumption, 정규화 Event, Baseline·What-if 전체 월별 Series, Checkpoint Comparison, Final Comparison, Impact Summary와 계산 Warning이 포함된다. 기존 요약, Risk, 규칙 기반 Explanation, 안전한 Trace와 AI Metadata는 유지한다. 이 확장은 OpenAI Draft Schema 변경이 아닌 Natural Language REST 응답의 additive 변경이므로 별도 전역 버전 체계는 만들지 않았다.
+
+전체 금융 결과는 `ScenarioComparisonTool`의 단 한 번의 `ScenarioSimulationService.compare` 결과에서 복사하며 Adapter나 Controller가 재시뮬레이션하지 않는다. 결과는 인증된 호출자에게만 반환되고 OpenAI 방향으로 역전송되지 않는다. 60개월 응답은 두 월별 Series 때문에 요약 응답보다 커지지만 기간은 최대 60개월, 이벤트는 최대 20개로 제한되며 자동 테스트에서 UTF-8 직렬화 결과가 2 MB 미만임을 검증한다.
+
 수동 테스트는 AI 환경변수 설정 후 현재 애플리케이션의 인증 세션과 CSRF 토큰을 사용해 위 요청을 전송한다. 먼저 `/actuator/health`를 확인하고, Provider 호출 전 개발자 도구나 서버 로그에 원문·금융값·Key를 출력하는 임시 로깅을 추가하지 않는다.
 
 ## 현재 한계
@@ -134,4 +138,5 @@ $env:OPENAI_MODEL='gpt-5.6-luna'
 - 이름·주소 PII 탐지는 정규식 기반 로컬 정책의 한계가 있다.
 - Provider 응답은 이벤트 초안 생성에만 사용하며 대화 상태를 유지하지 않는다.
 - Provider 장애 시 자연어 실행은 fail-closed로 실패하며 자동 fallback은 없다.
-- 실제 Google·Kakao 로그인을 붙이기 전까지 현재 인증 경계의 사용자 식별 구현은 임시 구조다.
+- 직접 Compare 월별 DTO가 월별 Delta를 제공하지 않으므로 자연어 상세 응답도 이를 새로 계산하지 않는다.
+- 실제 Provider E2E는 `FINTWIN_AI_ENABLED=true`와 실행 환경 Key가 모두 설정된 경우에만 수행한다. 2026-08-10 저장소 검증은 해당 설정이 없어 Test Double 계약 검증만 수행했다.

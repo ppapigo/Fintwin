@@ -95,6 +95,30 @@ describe("whatIfApi", () => {
     expect(response.trace[0]).toEqual({ sequence: 1, state: "RECEIVED", component: "orchestrator", outcomeCode: "accepted" });
   });
 
+  it("normalizes the full natural-language comparison contract without leaking internal identifiers", () => {
+    const response = normalizeNaturalLanguageResponse(`{
+      "aiUsed":true,"agentStatus":"COMPLETED","resultType":"SCENARIO_COMPARISON",
+      "typedResult":{
+        "startYearMonth":"2026-08","horizonMonths":60,"baselineFinalNetWorth":7000000.00,
+        "whatIfFinalNetWorth":6000000.00,"netWorthDelta":-1000000.00,
+        "liquidAssetsDelta":-1000000.00,"debtDelta":0.00,"cumulativeIncomeDelta":0.00,
+        "cumulativeConsumptionDelta":1000000.00,"serviceWarnings":[],
+        "comparisonDetails":${COMPARISON.replace('"warnings": []', '"calculationWarnings": []')}
+      },
+      "risks":[],"trace":[],"toolCallCount":1
+    }`);
+
+    const details = response.typedResult.comparisonDetails;
+    expect(details.financialProfileVersion).toBe(2);
+    expect(details.baseline.startYearMonth).toBe("2026-08");
+    expect(details.baseline.monthlyResults[0].income).toBe("3000000.00");
+    expect(details.whatIf.monthlyResults[0].totalFinancialAssets).toBe("6000000.00");
+    expect(details.finalComparison.netWorthDelta).toBe("-1000000.00");
+    expect(details).not.toHaveProperty("financialProfileId");
+    expect(details.baseline).not.toHaveProperty("financialProfileId");
+    expect(JSON.stringify(response)).not.toMatch(/financialProfileId|profileId|userId|scenarioText/);
+  });
+
   it("uses the preview endpoint once and sends only scenarioText", async () => {
     vi.mocked(apiRequest).mockResolvedValue('{"status":"BLOCKED","externalPayload":null,"references":[],"blockedIdentifierTypes":["EMAIL"],"privacyNotice":"blocked"}');
 

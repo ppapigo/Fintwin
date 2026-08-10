@@ -47,6 +47,23 @@ export function directComparisonViewModel(comparison) {
 
 export function naturalComparisonViewModel(response) {
   const result = response.typedResult;
+  if (result?.comparisonDetails) {
+    const comparison = directComparisonViewModel(result.comparisonDetails);
+    return {
+      ...comparison,
+      mode: "natural",
+      scenarioName: "자연어 What-if",
+      risks: response.risks,
+      serviceWarnings: result.serviceWarnings.length > 0
+        ? result.serviceWarnings
+        : comparison.serviceWarnings,
+      explanation: response.explanation,
+      metadata: response.metadata,
+      trace: response.trace,
+      privacyNotice: response.privacyNotice,
+      disclaimer: comparison.disclaimer || response.disclaimer,
+    };
+  }
   return {
     mode: "natural",
     status: response.status,

@@ -66,6 +66,8 @@ stateDiagram-v2
 
 각 Tool은 기존 애플리케이션 서비스 메서드 한 개를 한 번 호출하고 결과를 Profile/User ID 없는 Agent 전용 강타입 Result로 매핑한다. What-if의 baseline/시나리오 동시 계산과 Goal Solver의 내부 반복은 기존 서비스 내부 계산이며 Primary Tool 호출은 하나다. Agent는 계산식을 복제하지 않고 결과를 저장하거나 Profile을 변경하지 않는다.
 
+What-if 완료 결과의 기존 최종 요약 필드는 그대로 유지하며 `comparisonDetails`를 additive하게 제공한다. 이 상세 결과는 `ScenarioComparisonTool`이 이미 한 번 받은 `ScenarioComparisonResponse`의 privacy-safe 투영이며, 응답을 채우기 위한 두 번째 `compare`나 엔진 호출은 없다. 포함 항목은 Profile Version, Assumption, 정규화 Event, Baseline·What-if 월별 결과, Checkpoint, Final Comparison, Impact Summary와 계산 Warning이다. Profile ID, User ID, 사용자 원문, Vault와 Provider 요청·응답은 포함하지 않는다. `NEEDS_INPUT`, `REJECTED`, `FAILED`에서는 typed result가 없으므로 상세 금융 결과도 없다.
+
 ## Risk Checker
 
 Risk Checker는 Tool 결과에 이미 존재하는 boolean, delta, goal status와 warning code만 읽는다. 시뮬레이션을 다시 실행하거나 새로운 금융 임계값을 만들지 않는다.
@@ -187,6 +189,8 @@ Natural language
 ```
 
 `ValidatedScenarioAgentCommandFactory`는 Privacy 패키지 안에서 `ReferenceRehydrator` 검증이 성공한 Draft만 What-if Command로 변환한다. Agent 패키지는 Vault와 External AI Gateway에 의존하지 않는다. Profile, 거래, Pattern/Simulation/Goal 결과, Risk와 Agent 응답은 외부 AI Payload로 보내지 않는다. 외부 AI는 금융 계산이나 Tool 실행을 담당하지 않는다. 연결과 오류 정책은 `docs/OPENAI_ADAPTER.md`를 따른다.
+
+자연어 API의 전체 비교 결과는 로컬 엔진에서 인증된 Browser 방향으로만 반환한다. 같은 정규화 Event와 Assumption을 직접 Compare에 입력하면 Profile Version, 월별 Series, Checkpoint, Final, Impact와 Warning이 `BigDecimal.compareTo` 의미로 일치해야 한다. AI Metadata, Trace, Risk 표현과 설명 문장은 이 금융 결과 일치 기준에서 제외한다.
 
 ## 지원하지 않는 기능
 

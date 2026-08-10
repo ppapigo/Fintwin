@@ -17,12 +17,14 @@ public record ScenarioAgentToolResult(
         BigDecimal cumulativeConsumptionDelta,
         List<YearMonth> cashShortfallMonths,
         List<YearMonth> negativeAmortizationMonths,
-        List<String> serviceWarnings
+        List<String> serviceWarnings,
+        ScenarioComparisonDetails comparisonDetails
 ) implements AgentToolResult {
     public ScenarioAgentToolResult {
         cashShortfallMonths = List.copyOf(cashShortfallMonths);
         negativeAmortizationMonths = List.copyOf(negativeAmortizationMonths);
         serviceWarnings = List.copyOf(serviceWarnings);
+        java.util.Objects.requireNonNull(comparisonDetails);
     }
 
     @Override

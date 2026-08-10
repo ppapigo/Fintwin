@@ -70,8 +70,13 @@ function normalizeImpact(result) {
   return Object.fromEntries(fields.map((field) => [field, decimal(result?.[field])]));
 }
 
-export function normalizeScenarioComparison(text) {
-  const payload = parsePrecisionJson(text);
+export function normalizeScenarioComparisonPayload(payload) {
+  const sharedSeriesFields = {
+    financialProfileVersion: payload?.financialProfileVersion,
+    startYearMonth: payload?.startYearMonth,
+    horizonMonths: payload?.horizonMonths,
+    assumptions: payload?.assumptions,
+  };
   return {
     financialProfileVersion: Number(payload?.financialProfileVersion) || 0,
     scenarioName: String(payload?.scenarioName ?? ""),
@@ -79,13 +84,19 @@ export function normalizeScenarioComparison(text) {
     horizonMonths: Number(payload?.horizonMonths) || 0,
     assumptions: normalizeBaselineSimulationPayload({ assumptions: payload?.assumptions }).assumptions,
     normalizedEvents: Array.isArray(payload?.normalizedEvents) ? payload.normalizedEvents.map(normalizeEvent) : [],
-    baseline: normalizeBaselineSimulationPayload(payload?.baseline ?? {}),
-    whatIf: normalizeBaselineSimulationPayload(payload?.whatIf ?? {}),
+    baseline: normalizeBaselineSimulationPayload({ ...payload?.baseline, ...sharedSeriesFields }),
+    whatIf: normalizeBaselineSimulationPayload({ ...payload?.whatIf, ...sharedSeriesFields }),
     checkpointComparisons: Array.isArray(payload?.checkpointComparisons) ? payload.checkpointComparisons.map(normalizeComparison) : [],
     finalComparison: normalizeComparison(payload?.finalComparison),
     impactSummary: normalizeImpact(payload?.impactSummary),
-    warnings: Array.isArray(payload?.warnings) ? payload.warnings.filter((item) => typeof item === "string") : [],
+    warnings: Array.isArray(payload?.calculationWarnings)
+      ? payload.calculationWarnings.filter((item) => typeof item === "string")
+      : Array.isArray(payload?.warnings) ? payload.warnings.filter((item) => typeof item === "string") : [],
   };
+}
+
+export function normalizeScenarioComparison(text) {
+  return normalizeScenarioComparisonPayload(parsePrecisionJson(text));
 }
 
 export function normalizePrivacyPreview(text) {
@@ -122,6 +133,9 @@ function normalizeAgentTypedResult(result) {
     cashShortfallMonths: Array.isArray(result.cashShortfallMonths) ? result.cashShortfallMonths.map(String) : [],
     negativeAmortizationMonths: Array.isArray(result.negativeAmortizationMonths) ? result.negativeAmortizationMonths.map(String) : [],
     serviceWarnings: Array.isArray(result.serviceWarnings) ? result.serviceWarnings.map(String) : [],
+    comparisonDetails: result.comparisonDetails
+      ? normalizeScenarioComparisonPayload({ scenarioName: "자연어 What-if", ...result.comparisonDetails })
+      : null,
   };
 }
 

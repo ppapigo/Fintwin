@@ -5,6 +5,7 @@ import com.fintwin.fintwin.agent.domain.GoalAgentToolResult;
 import com.fintwin.fintwin.agent.domain.RiskCode;
 import com.fintwin.fintwin.agent.domain.RiskFinding;
 import com.fintwin.fintwin.agent.domain.ScenarioAgentToolResult;
+import com.fintwin.fintwin.agent.domain.ScenarioComparisonDetails;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class DeterministicRiskCheckerTest {
     private final DeterministicRiskChecker checker = new DeterministicRiskChecker();
@@ -21,7 +23,7 @@ class DeterministicRiskCheckerTest {
         ScenarioAgentToolResult result = new ScenarioAgentToolResult(YearMonth.of(2026, 8), 36,
                 YearMonth.of(2029, 7), money("100"), money("80"), money("-20"), money("-10"),
                 BigDecimal.ZERO, BigDecimal.ZERO, money("20"), List.of(YearMonth.of(2027, 1)),
-                List.of(YearMonth.of(2027, 2)), List.of());
+                List.of(YearMonth.of(2027, 2)), List.of(), mock(ScenarioComparisonDetails.class));
 
         assertThat(checker.check(result)).extracting(RiskFinding::code).containsExactly(
                 RiskCode.CASH_SHORTFALL, RiskCode.NEGATIVE_AMORTIZATION,

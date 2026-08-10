@@ -439,6 +439,10 @@ h1, h2, p { margin-top: 0; }
 .calculation-disclaimer { border-left: 4px solid #9fbf4c; color: #4f5d56; background: #eef3e9; }
 .calculation-disclaimer p { margin: 7px 0; font-size: 0.74rem; line-height: 1.55; }
 .calculation-disclaimer small { color: #708078; }
+.calculation-basis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; margin: 13px 0; }
+.calculation-basis-grid div { display: grid; grid-template-columns: minmax(76px, auto) 1fr; gap: 9px; font-size: 0.74rem; }
+.calculation-basis-grid dt { font-weight: 750; }
+.calculation-basis-grid dd { margin: 0; overflow-wrap: anywhere; }
 
 /* Product placeholders */
 .placeholder-page { min-height: 72vh; }
@@ -537,6 +541,7 @@ h1, h2, p { margin-top: 0; }
   .natural-actions .button { width: 100%; }
   .comparison-summary-grid, .normalized-event-grid, .impact-grid { grid-template-columns: 1fr; }
   .whatif-result-section, .monthly-comparison-details, .calculation-disclaimer { padding: 22px 17px; }
+  .calculation-basis-grid { grid-template-columns: 1fr; }
   .comparison-chart { margin-left: -10px; width: calc(100% + 10px); }
   .transparency-panel li { grid-template-columns: 24px 1fr; }
   .transparency-panel li small { grid-column: 2; }

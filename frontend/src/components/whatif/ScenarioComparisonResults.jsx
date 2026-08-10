@@ -177,6 +177,24 @@ function Metadata({ viewModel }) {
   );
 }
 
+function CalculationBasis({ viewModel }) {
+  const basis = viewModel.baseline?.calculationBasis;
+  const items = [
+    ["월 이율", basis?.monthlyRateFormula],
+    ["금액 반올림", basis?.moneyRounding],
+    ["저축 처리", basis?.savingsTreatment],
+    ["투자 처리", basis?.investmentTreatment],
+  ].filter(([, value]) => value);
+  return (
+    <section className="calculation-disclaimer">
+      <strong>계산 기준과 면책</strong>
+      {items.length > 0 && <dl className="calculation-basis-grid">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+      <p>{viewModel.disclaimer || "사용자 가정과 구조화 이벤트에 기반한 결정론적 비교이며 예측이나 보장이 아닙니다."}</p>
+      <small>{viewModel.privacyNotice}</small>
+    </section>
+  );
+}
+
 export function ScenarioComparisonResults({ viewModel }) {
   return (
     <div className="whatif-results" aria-live="polite">
@@ -188,7 +206,7 @@ export function ScenarioComparisonResults({ viewModel }) {
       <RiskAndExplanation viewModel={viewModel} />
       {viewModel.fullComparisonAvailable && <MonthlyDetails rows={viewModel.monthlyRows} />}
       <Metadata viewModel={viewModel} />
-      <section className="calculation-disclaimer"><strong>계산 기준과 면책</strong><p>{viewModel.disclaimer || "사용자 가정과 구조화 이벤트에 기반한 결정론적 비교이며 예측이나 보장이 아닙니다."}</p><small>{viewModel.privacyNotice}</small></section>
+      <CalculationBasis viewModel={viewModel} />
     </div>
   );
 }

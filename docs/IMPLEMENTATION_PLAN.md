@@ -96,15 +96,15 @@
 
 ## 10. 제한적 FinTwin Agent
 
-- 상태: 결정론적 Orchestrator MVP 완료.
+- 상태: 결정론적 Orchestrator와 What-if 전체 비교 typed result 완료.
 - 목표: 구조화 Intent를 고정 Allowlist로 라우팅하고 누락값을 확인한 뒤 기존 결정론적 서비스 하나만 실행한다.
 - 주요 클래스: `FinTwinAgentOrchestrator`, `DeterministicIntentRouter`, `InformationGapChecker`, 세 Agent Tool, `DeterministicRiskChecker`, `RuleBasedExplanationComposer`.
 - API: `POST /api/agent/execute`가 Baseline, What-if, Goal Reverse Intent와 강타입 결과, 규칙 기반 Risk/설명, 비민감 실행 Trace를 반환한다.
 - 실행 제한: Primary Tool은 요청당 최대 1회이며 재시도, Tool chaining, Agent loop, 병렬 실행과 자동 대안 Tool이 없다.
 - Privacy 연계: 검증과 Reference 재결합이 끝난 `ExternalAiScenarioDraft`만 Privacy 패키지의 Factory를 거쳐 What-if Command가 될 수 있다. Agent는 Vault, Gateway, 외부 AI SDK와 HTTP Client에 접근하지 않는다.
 - 완료 조건: Agent는 Repository/Entity와 금융 계산 엔진에 직접 접근하지 않고 기존 Service 경계를 재사용하며, 누락값을 추정하지 않고 외부 AI 호출 없이 완료·누락·거부·실패 상태를 결정론적으로 반환한다.
-- 테스트: Intent/Tool 고정 매핑, 누락·충돌, 부채 상환액, 서비스 1회 호출, 상태 전이, 실패 일반화, Risk/Explanation 근거, Trace 비민감성, Privacy Draft 계약, 인증·Validation과 정적 금칙 검사.
-- 다음 범위: 외부 AI Adapter는 아직 구현하지 않으며, 구현 전 outbound DTO allowlist와 Provider timeout/fail-closed 정책을 별도 확정한다.
+- 테스트: Intent/Tool 고정 매핑, 누락·충돌, 부채 상환액, 서비스 1회 호출, 상태 전이, 실패 일반화, Risk/Explanation 근거, Trace 비민감성, Privacy Draft 계약, 인증·Validation, 전체 비교 projection과 정적 금칙 검사.
+- What-if 계약: Primary Tool이 한 번 받은 결과에서 ID 없는 `comparisonDetails`를 만들며 12·36·60개월 직접 입력 결과와 월별·Checkpoint·Final·Impact·Warning이 일치한다.
 
 ## 11. AI Adapter
 
@@ -112,7 +112,7 @@
 - 목표: 외부 AI를 자연어 What-if 이벤트 초안 구조화에만 선택적으로 사용하고 실제 금융 계산은 로컬 엔진에 유지한다.
 - 주요 클래스: `OpenAiExternalAiGateway`, `OpenAiProperties`, `OpenAiResponseParser`, `NaturalLanguageWhatIfService`, `NaturalLanguageWhatIfController`.
 - 완료 조건: `ExternalAiScenarioRequest` 8개 필드만 Responses API로 전송하고 `store=false`, strict Structured Output, Provider 1회 호출, 자동 retry/fallback 금지와 fail-closed 오류 정책을 지킨다. Draft는 기존 Validator·Reference 재결합·Event Mapper를 통과한 뒤에만 Agent로 전달한다.
-- 테스트: 설정 Validation, outbound allowlist, PII/Guard 0회 호출, prompt injection, Structured Output strict 파싱, Reference 재결합/타입, 누락정보, HTTP/timeout/refusal/incomplete/크기 오류, 인증/CSRF, Tool 0/1회, 정적 개인정보 의존성 검사.
+- 테스트: 설정 Validation, outbound allowlist, PII/Guard 0회 호출, prompt injection, Structured Output strict 파싱, Reference 재결합/타입, 누락정보, HTTP/timeout/refusal/incomplete/크기 오류, 인증/CSRF, Tool 0/1회, 자연어·직접 입력 금융 결과 일치, 정적 개인정보 의존성 검사.
 - 상세 계약: `docs/OPENAI_ADAPTER.md`.
 
 ## 12. Spring Security·Google·Kakao 로그인
@@ -135,10 +135,11 @@
 
 - 완료: OAuth2 Session·CSRF, Financial Profile 생성·조회·수정·버전 이력, `/twin` Baseline 대시보드.
 - 완료: `/what-if` Privacy-first 화면. 자연어는 Preview SAFE와 명시적 승인 후에만 Agent API를 호출하며, 직접 입력은 6종 구조화 이벤트를 Compare API로 보내고 AI를 호출하지 않는다.
+- 완료: 자연어 완료 응답의 전체 월별 Series·Checkpoint·Impact·정규화 Event를 직접 입력과 같은 결과 View Model·Chart·Table에 연결했다. 상세 계약이 없는 이전 응답은 요약 fallback을 유지한다.
 - 공통화: `/twin`과 `/what-if`가 같은 Assumption 상태·Validation·요청 변환 Component를 사용한다. Compare와 Agent 응답은 계산 없는 표시용 View Model로 매핑한다.
 - Privacy: 자연어 원문·Preview·결과를 브라우저 저장소, Query, Console, Analytics에 남기지 않고 요청·표시에서 내부 User/Profile ID와 Reference 실제값을 제거한다.
 - 완료 조건/테스트: SAFE/BLOCKED, 승인 무효화, Agent 네 상태, AI 장애 fallback, 이벤트 6종·최대 20개·범위·조건부 필드, 직접 입력 AI 0회, Chart·Checkpoint·Impact·Risk·Explanation·월별 Table Mapping을 자동 검증한다.
-- 현재 한계: Agent 자연어 결과에는 월별 Series·Checkpoint·정규화 Event가 없고 Compare 월별 DTO에는 월별 Delta가 없다. Frontend 재계산 없이 제한을 명시한다.
+- 현재 한계: Compare 월별 DTO에는 월별 Delta가 없으며 Frontend는 이를 재계산하지 않는다. 실제 Provider E2E는 Adapter와 Key가 활성화된 환경에서 별도 검증한다.
 - 상세 문서: `docs/FRONTEND_WHAT_IF.md`.
 
 ## 14. Docker

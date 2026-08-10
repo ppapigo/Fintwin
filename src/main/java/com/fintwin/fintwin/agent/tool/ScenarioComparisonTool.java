@@ -3,6 +3,7 @@ package com.fintwin.fintwin.agent.tool;
 import com.fintwin.fintwin.agent.domain.AgentCommand;
 import com.fintwin.fintwin.agent.domain.AgentToolResult;
 import com.fintwin.fintwin.agent.domain.ScenarioAgentToolResult;
+import com.fintwin.fintwin.agent.domain.ScenarioComparisonDetails;
 import com.fintwin.fintwin.agent.routing.AgentToolName;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonRequest;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonResponse;
@@ -33,6 +34,7 @@ public final class ScenarioComparisonTool implements FinTwinAgentTool {
         BaselineSimulationResponse.MonthlyResultResponse baselineLast = response.baseline().monthlyResults().getLast();
         BaselineSimulationResponse.MonthlyResultResponse whatIfLast = response.whatIf().monthlyResults().getLast();
         ScenarioComparisonResponse.ComparisonResult comparison = response.finalComparison();
+        ScenarioComparisonDetails comparisonDetails = ScenarioComparisonDetails.from(response);
         return new ScenarioAgentToolResult(response.startYearMonth(), response.horizonMonths(),
                 whatIfLast.yearMonth(), baselineLast.netWorth(), whatIfLast.netWorth(), comparison.netWorthDelta(),
                 comparison.liquidAssetsDelta(), comparison.debtDelta(), comparison.cumulativeIncomeDelta(),
@@ -43,6 +45,6 @@ public final class ScenarioComparisonTool implements FinTwinAgentTool {
                 response.whatIf().monthlyResults().stream()
                         .filter(BaselineSimulationResponse.MonthlyResultResponse::negativeAmortization)
                         .map(BaselineSimulationResponse.MonthlyResultResponse::yearMonth).toList(),
-                response.warnings());
+                response.warnings(), comparisonDetails);
     }
 }

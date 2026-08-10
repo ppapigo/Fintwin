@@ -5,6 +5,7 @@ import com.fintwin.fintwin.agent.domain.AgentIntent;
 import com.fintwin.fintwin.agent.domain.BaselineAgentToolResult;
 import com.fintwin.fintwin.agent.domain.GoalAgentToolResult;
 import com.fintwin.fintwin.agent.domain.ScenarioAgentToolResult;
+import com.fintwin.fintwin.agent.domain.ScenarioComparisonDetails;
 import com.fintwin.fintwin.goal.dto.GoalReverseSimulationResponse;
 import com.fintwin.fintwin.goal.service.GoalReverseSimulationService;
 import com.fintwin.fintwin.scenario.dto.FinancialEventRequest;
@@ -55,20 +56,38 @@ class AgentToolsTest {
         ScenarioComparisonResponse response = mock(ScenarioComparisonResponse.class);
         BaselineSimulationResponse baseline = mock(BaselineSimulationResponse.class);
         BaselineSimulationResponse whatIf = mock(BaselineSimulationResponse.class);
+        BaselineSimulationResponse.AssumptionsResponse assumptions = mock(
+                BaselineSimulationResponse.AssumptionsResponse.class);
+        BaselineSimulationResponse.CumulativeTotalsResponse totals = mock(
+                BaselineSimulationResponse.CumulativeTotalsResponse.class);
+        BaselineSimulationResponse.CalculationBasisResponse basis = mock(
+                BaselineSimulationResponse.CalculationBasisResponse.class);
         ScenarioComparisonResponse.ComparisonResult comparison = mock(
                 ScenarioComparisonResponse.ComparisonResult.class);
+        ScenarioComparisonResponse.ImpactSummary impact = mock(ScenarioComparisonResponse.ImpactSummary.class);
         BaselineSimulationResponse.MonthlyResultResponse baselineMonth = month(
                 YearMonth.of(2029, 7), false, false, "100", "200", "0", "300");
         BaselineSimulationResponse.MonthlyResultResponse whatIfMonth = month(
                 YearMonth.of(2029, 7), false, false, "80", "200", "0", "280");
         when(response.startYearMonth()).thenReturn(YearMonth.of(2026, 8));
         when(response.horizonMonths()).thenReturn(36);
+        when(response.financialProfileVersion()).thenReturn(4);
+        when(response.assumptions()).thenReturn(assumptions);
+        when(response.normalizedEvents()).thenReturn(List.of());
         when(response.baseline()).thenReturn(baseline);
         when(response.whatIf()).thenReturn(whatIf);
+        when(response.checkpointComparisons()).thenReturn(List.of());
         when(response.finalComparison()).thenReturn(comparison);
+        when(response.impactSummary()).thenReturn(impact);
         when(response.warnings()).thenReturn(List.of());
         when(baseline.monthlyResults()).thenReturn(List.of(baselineMonth));
         when(whatIf.monthlyResults()).thenReturn(List.of(whatIfMonth));
+        when(baseline.checkpoints()).thenReturn(List.of());
+        when(whatIf.checkpoints()).thenReturn(List.of());
+        when(baseline.finalCumulativeTotals()).thenReturn(totals);
+        when(whatIf.finalCumulativeTotals()).thenReturn(totals);
+        when(baseline.calculationBasis()).thenReturn(basis);
+        when(whatIf.calculationBasis()).thenReturn(basis);
         when(comparison.netWorthDelta()).thenReturn(new BigDecimal("-20"));
         when(comparison.liquidAssetsDelta()).thenReturn(new BigDecimal("-20"));
         when(comparison.debtDelta()).thenReturn(BigDecimal.ZERO);
@@ -81,6 +100,10 @@ class AgentToolsTest {
 
         verify(service, times(1)).compare(any(), any());
         assertThat(result.netWorthDelta()).isEqualByComparingTo("-20");
+        assertThat(result.comparisonDetails().financialProfileVersion()).isEqualTo(4);
+        assertThat(ScenarioComparisonDetails.class.getRecordComponents())
+                .extracting(component -> component.getName())
+                .doesNotContain("financialProfileId", "userId", "scenarioText");
     }
 
     @Test

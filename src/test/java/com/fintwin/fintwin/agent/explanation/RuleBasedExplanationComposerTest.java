@@ -3,6 +3,7 @@ package com.fintwin.fintwin.agent.explanation;
 import com.fintwin.fintwin.agent.domain.AgentEvidence;
 import com.fintwin.fintwin.agent.domain.AgentExplanation;
 import com.fintwin.fintwin.agent.domain.ScenarioAgentToolResult;
+import com.fintwin.fintwin.agent.domain.ScenarioComparisonDetails;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -10,6 +11,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class RuleBasedExplanationComposerTest {
     @Test
@@ -17,7 +19,8 @@ class RuleBasedExplanationComposerTest {
         ScenarioAgentToolResult result = new ScenarioAgentToolResult(YearMonth.of(2026, 8), 36,
                 YearMonth.of(2029, 7), new BigDecimal("500.00"), new BigDecimal("376.55"),
                 new BigDecimal("-123.45"), new BigDecimal("-120.00"), BigDecimal.ZERO,
-                BigDecimal.ZERO, new BigDecimal("123.45"), List.of(), List.of(), List.of());
+                BigDecimal.ZERO, new BigDecimal("123.45"), List.of(), List.of(), List.of(),
+                mock(ScenarioComparisonDetails.class));
 
         AgentExplanation explanation = new RuleBasedExplanationComposer().compose(result);
 

@@ -91,6 +91,7 @@ class FinTwinAgentOrchestratorTest {
         assertThat(result.status()).isEqualTo(AgentStatus.REJECTED);
         assertThat(result.selectedTool()).isNull();
         assertThat(result.toolCallCount()).isZero();
+        assertThat(result.typedResult()).isNull();
         assertThat(result.trace()).extracting(AgentTraceStep::state)
                 .containsExactly(AgentState.RECEIVED, AgentState.REJECTED);
         verify(gapChecker, never()).check(anyLong(), any());
@@ -108,6 +109,7 @@ class FinTwinAgentOrchestratorTest {
         assertThat(result.toString()).doesNotContain("sensitive detail");
         assertThat(result.trace().getLast().state()).isEqualTo(AgentState.FAILED);
         assertThat(result.toolCallCount()).isEqualTo(1);
+        assertThat(result.typedResult()).isNull();
         verify(baselineTool, times(1)).execute(anyLong(), any());
         verifyNoInteractions(scenarioTool, goalTool);
     }

@@ -10,6 +10,7 @@ import com.fintwin.fintwin.agent.domain.AgentStatus;
 import com.fintwin.fintwin.agent.domain.AgentTraceStep;
 import com.fintwin.fintwin.agent.domain.MissingInformationCode;
 import com.fintwin.fintwin.agent.domain.ScenarioAgentToolResult;
+import com.fintwin.fintwin.agent.domain.ScenarioComparisonDetails;
 import com.fintwin.fintwin.agent.orchestration.FinTwinAgentOrchestrator;
 import com.fintwin.fintwin.agent.routing.AgentToolName;
 import com.fintwin.fintwin.ai.dto.NaturalLanguageWhatIfRequest;
@@ -121,6 +122,9 @@ class NaturalLanguageWhatIfServiceTest {
         assertThat(amount.toolCallCount()).isZero();
         assertThat(date.toolCallCount()).isZero();
         assertThat(period.toolCallCount()).isZero();
+        assertThat(amount.typedResult()).isNull();
+        assertThat(date.typedResult()).isNull();
+        assertThat(period.typedResult()).isNull();
         verify(gateway, times(3)).extractScenarioEvents(envelope.externalRequest());
         verify(orchestrator, never()).execute(anyLong(), any());
     }
@@ -266,7 +270,8 @@ class NaturalLanguageWhatIfServiceTest {
         ScenarioAgentToolResult toolResult = new ScenarioAgentToolResult(YearMonth.of(2026, 8), 36,
                 YearMonth.of(2029, 7), new BigDecimal("100"), new BigDecimal("80"),
                 new BigDecimal("-20"), new BigDecimal("-20"), BigDecimal.ZERO, BigDecimal.ZERO,
-                new BigDecimal("20"), List.of(), List.of(), List.of());
+                new BigDecimal("20"), List.of(), List.of(), List.of(),
+                mock(ScenarioComparisonDetails.class));
         AgentExplanation explanation = new AgentExplanation("비교", "차이", List.of(
                 new AgentEvidence("typedResult.netWorthDelta", "-20")), "가정", "면책");
         return new AgentExecutionResult(AgentStatus.COMPLETED, "WHAT_IF_SIMULATION",
