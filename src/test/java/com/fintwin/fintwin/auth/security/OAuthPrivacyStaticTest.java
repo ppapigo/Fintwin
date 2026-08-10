@@ -2,8 +2,10 @@ package com.fintwin.fintwin.auth.security;
 
 import com.fintwin.fintwin.auth.dto.AuthenticationStatusResponse;
 import com.fintwin.fintwin.user.domain.OAuthIdentity;
+import org.hibernate.annotations.Collate;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,5 +34,15 @@ class OAuthPrivacyStaticTest {
 
         assertThat(principal.getAttributes()).containsOnlyKeys("provider");
         assertThat(principal.toString()).doesNotContain("11");
+    }
+
+    @Test
+    void providerSubjectDeclaresCaseSensitiveMysqlCollation() throws NoSuchFieldException {
+        Field providerSubject = OAuthIdentity.class.getDeclaredField("providerSubject");
+
+        assertThat(providerSubject.getAnnotation(Collate.class))
+                .isNotNull()
+                .extracting(Collate::value)
+                .isEqualTo("utf8mb4_0900_bin");
     }
 }

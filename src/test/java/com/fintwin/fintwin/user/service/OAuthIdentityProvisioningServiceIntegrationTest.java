@@ -74,6 +74,16 @@ class OAuthIdentityProvisioningServiceIntegrationTest {
     }
 
     @Test
+    void sameProviderSubjectsRemainCaseSensitive() {
+        Long upperCase = service.resolveOrCreate(OAuthProvider.GOOGLE, "Case-Sensitive-Subject");
+        Long lowerCase = service.resolveOrCreate(OAuthProvider.GOOGLE, "case-sensitive-subject");
+
+        assertThat(upperCase).isNotEqualTo(lowerCase);
+        assertThat(userRepository.count()).isEqualTo(2);
+        assertThat(identityRepository.count()).isEqualTo(2);
+    }
+
+    @Test
     void concurrentFirstLoginCreatesExactlyOneIdentityAndOneUser() throws Exception {
         try (var executor = Executors.newFixedThreadPool(2)) {
             CountDownLatch ready = new CountDownLatch(2);

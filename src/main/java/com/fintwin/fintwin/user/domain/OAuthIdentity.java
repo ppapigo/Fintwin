@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Collate;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -36,6 +37,7 @@ public class OAuthIdentity {
     @Column(nullable = false, length = 20, updatable = false)
     private OAuthProvider provider;
 
+    @Collate("utf8mb4_0900_bin")
     @Column(name = "provider_subject", nullable = false, length = 255, updatable = false)
     private String providerSubject;
 
