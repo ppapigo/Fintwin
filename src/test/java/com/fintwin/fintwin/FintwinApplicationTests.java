@@ -57,4 +57,12 @@ class FintwinApplicationTests {
 				.andExpect(status().isForbidden());
 	}
 
+	@Test
+	void goalReverseSimulationApiRequiresAuthentication() throws Exception {
+		mockMvc.perform(post("/api/goals/reverse-simulate")
+					.contentType("application/json")
+					.content("{}"))
+				.andExpect(status().isForbidden());
+	}
+
 }

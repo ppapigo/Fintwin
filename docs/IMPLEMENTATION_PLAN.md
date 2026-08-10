@@ -59,10 +59,14 @@
 
 ## 7. Goal Reverse Simulation
 
-- 목표: 목표 금액·기한에서 필요한 월 저축/투자/상환 조건을 역산한다.
-- 주요 클래스: `FinancialGoal`, `GoalSolver`, `GoalSolution`, `FeasibilityResult`.
-- 완료 조건: 가능/불가능과 최소 요구 조건을 결정론적으로 설명한다.
-- 테스트: 정확 경계, 불가능 목표, 복수 해, 최대 반복 및 수렴.
+- 상태: TARGET_NET_WORTH MVP 완료.
+- 목표: 목표 금액·기한에서 필요한 지출 절감, 소득 증가, 절감 후 투자 조건을 역산한다.
+- 주요 클래스: `FinancialGoal`, `GoalReverseSolver`, `GoalPlan`, `GoalSolverResult`, `GoalReverseSimulationService`.
+- API: `POST /api/goals/reverse-simulate`가 최신 Profile을 사용해 baseline과 고정 순서의 세 대안을 반환한다.
+- 알고리즘: 기존 `MonthlyFinancialSimulationEngine`을 Oracle로 사용하며 지수적 상한 탐색 후 1원 단위 `BigDecimal` 이진 탐색과 solution/solution-1 경계 검증을 수행한다. 대안당 최대 128회다.
+- 지출 상한: 기간 중 baseline 변동지출의 최솟값을 넘지 않아 고정지출까지 자동 절감하지 않는다.
+- 완료 조건: 가능/부분 가능/불가능, 최소 요구 조건, 구조화 경고와 전체 월별 결과를 결정론적으로 설명하며 Goal과 결과를 저장하지 않는다.
+- 테스트: 소득·지출·투자 골든 경계, 이미 달성 가능, 불가능 상한, 최신 Profile 불변, Validation, 인증, 반복 제한과 기존 baseline 동일성.
 
 ## 8. 거래 CSV 및 Pattern Engine
 
