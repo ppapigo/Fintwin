@@ -70,6 +70,41 @@ class FintwinApplicationTests {
 	}
 
 	@Test
+	void agentApiRequiresAuthentication() throws Exception {
+		mockMvc.perform(post("/api/agent/execute")
+					.contentType("application/json")
+					.content("{\"intent\":\"BASELINE_SIMULATION\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser
+	void agentReturnsNeedsInputAsAValidStructuredResponse() throws Exception {
+		mockMvc.perform(post("/api/agent/execute")
+					.with(csrf())
+					.contentType("application/json")
+					.content("{\"intent\":\"BASELINE_SIMULATION\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("NEEDS_INPUT"))
+				.andExpect(jsonPath("$.selectedTool").value("BASELINE_SIMULATION_TOOL"))
+				.andExpect(jsonPath("$.toolCallCount").value(0))
+				.andExpect(jsonPath("$.typedResult").doesNotExist())
+				.andExpect(jsonPath("$.missingInformation[0].code")
+						.value("START_YEAR_MONTH_REQUIRED"));
+	}
+
+	@Test
+	@WithMockUser
+	void malformedAgentRequestUsesCommonBadRequestResponse() throws Exception {
+		mockMvc.perform(post("/api/agent/execute")
+					.with(csrf())
+					.contentType("application/json")
+					.content("{\"intent\":\"BASELINE_SIMULATION\",\"startYearMonth\":\"invalid\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void patternAnalysisApiRequiresAuthentication() throws Exception {
 		MockMultipartFile file = new MockMultipartFile("file", "synthetic.csv", "text/csv",
 				"synthetic".getBytes(java.nio.charset.StandardCharsets.UTF_8));

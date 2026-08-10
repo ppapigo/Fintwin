@@ -96,10 +96,15 @@
 
 ## 10. 제한적 FinTwin Agent
 
-- 목표: 내부 도구를 순서화하되 금융 결정을 임의 생성하지 않는 제한적 Agent를 만든다.
-- 주요 클래스: `FinTwinAgent`, `AgentIntent`, `AgentPlan`, 허용된 내부 tool handler.
-- 완료 조건: Agent는 DTO/서비스 경계만 사용하고 Repository/Entity에 접근하지 않는다.
-- 테스트: 도구 허용 목록, 잘못된 호출 차단, 결정론적 fallback, 감사 이벤트.
+- 상태: 결정론적 Orchestrator MVP 완료.
+- 목표: 구조화 Intent를 고정 Allowlist로 라우팅하고 누락값을 확인한 뒤 기존 결정론적 서비스 하나만 실행한다.
+- 주요 클래스: `FinTwinAgentOrchestrator`, `DeterministicIntentRouter`, `InformationGapChecker`, 세 Agent Tool, `DeterministicRiskChecker`, `RuleBasedExplanationComposer`.
+- API: `POST /api/agent/execute`가 Baseline, What-if, Goal Reverse Intent와 강타입 결과, 규칙 기반 Risk/설명, 비민감 실행 Trace를 반환한다.
+- 실행 제한: Primary Tool은 요청당 최대 1회이며 재시도, Tool chaining, Agent loop, 병렬 실행과 자동 대안 Tool이 없다.
+- Privacy 연계: 검증과 Reference 재결합이 끝난 `ExternalAiScenarioDraft`만 Privacy 패키지의 Factory를 거쳐 What-if Command가 될 수 있다. Agent는 Vault, Gateway, 외부 AI SDK와 HTTP Client에 접근하지 않는다.
+- 완료 조건: Agent는 Repository/Entity와 금융 계산 엔진에 직접 접근하지 않고 기존 Service 경계를 재사용하며, 누락값을 추정하지 않고 외부 AI 호출 없이 완료·누락·거부·실패 상태를 결정론적으로 반환한다.
+- 테스트: Intent/Tool 고정 매핑, 누락·충돌, 부채 상환액, 서비스 1회 호출, 상태 전이, 실패 일반화, Risk/Explanation 근거, Trace 비민감성, Privacy Draft 계약, 인증·Validation과 정적 금칙 검사.
+- 다음 범위: 외부 AI Adapter는 아직 구현하지 않으며, 구현 전 outbound DTO allowlist와 Provider timeout/fail-closed 정책을 별도 확정한다.
 
 ## 11. AI Adapter
 
