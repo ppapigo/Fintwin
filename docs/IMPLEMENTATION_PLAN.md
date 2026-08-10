@@ -11,17 +11,22 @@
 
 ## 2. Financial Profile
 
-- 목표: 사용자 재무상태의 입력·조회·수정과 계산 가능한 스냅샷을 제공한다.
-- 주요 클래스: `FinancialProfile`, `FinancialProfileSnapshot`, Profile DTO/Service/Controller.
-- 완료 조건: 금액·이율이 `BigDecimal`이고 사용자별 단일 프로필 및 변경 규칙이 보장된다.
-- 테스트: CRUD, 경계값, 소유권, 동시 수정, DTO/Entity 매핑.
+- 목표: 사용자 재무상태를 UPDATE하지 않는 불변 스냅샷 버전 집합으로 입력·조회한다.
+- 주요 클래스: `FinancialProfile`, `FinancialProfileCreateRequest`, `FinancialProfileUpdateRequest`, Profile Repository/Service/Controller.
+- 버전 모델: 최초 등록은 version 1이며, 수정은 직전 ID를 `previousProfileId`로 가리키는 version N+1 행을 INSERT한다. 최신 Profile은 사용자별 가장 높은 version으로 조회한다.
+- API: `POST /api/financial-profiles`, `GET|PUT /api/financial-profiles/current`, `GET /api/financial-profiles/history`, `GET /api/financial-profiles/{profileId}`. 기존 `GET /me`는 current 별칭으로 유지한다.
+- 동시성: 사용자 행 `PESSIMISTIC_WRITE` 잠금으로 동일 사용자의 버전 생성을 직렬화하고 `(user_id, profile_version)` 유일성 제약을 최종 방어선으로 사용한다.
+- 완료 조건: 금액·이율이 `BigDecimal`이고 과거 Profile이 변경되지 않으며 소유 사용자만 개별 스냅샷을 조회한다.
+- 테스트: 최초/중복 생성, 버전 증가, 과거값 불변, 최신/이력 정렬, 소유권, Validation, 복합 유일성 제약.
 
 ## 3. 순수 Java 금융 시뮬레이션 엔진
 
-- 목표: 월 단위 현금흐름·자산·부채 변화를 결정론적으로 계산한다.
-- 주요 클래스: `MonthlySimulator`, `FinancialState`, `SimulationAssumptions`, `MoneyMath`.
-- 완료 조건: 코어 패키지가 Spring/JPA/AI를 import하지 않고 동일 입력에 동일 결과를 낸다.
-- 테스트: 이자·상환·저축·투자, 0/큰 값, 반올림·스케일, 불변성.
+- 상태: 완료.
+- 목표: 최신 불변 Financial Profile을 입력으로 월 단위 현금흐름·자산·부채를 결정론적으로 계산한다.
+- 주요 클래스: `SimulationInput`, `SimulationAssumptions`, `MonthlyFinancialSimulationEngine`, `MoneyMath`, `BaselineSimulationService`.
+- API: `POST /api/simulations/baseline`에서 12·36·60개월 결과와 12·36·60개월 이내 체크포인트를 제공한다.
+- 완료 조건: 코어 패키지가 Spring/JPA/AI를 import하지 않고 동일 입력에 동일 결과를 내며 결과를 DB에 저장하지 않는다.
+- 테스트: 성장·물가, 예금·투자수익, 이자·원금·음의 상환, 저축·투자 회계, 현금 부족, 반올림, 최신 Profile 불변성.
 
 ## 4. 금융 엔진 골든 테스트
 
@@ -43,6 +48,14 @@
 - 주요 클래스: `ScenarioComparisonService`, `ComparisonResult`, `MetricDelta`.
 - 완료 조건: 동일 가정 기준의 차이와 판단 근거가 DTO로 제공된다.
 - 테스트: 동일 시나리오, 우세/열세, 지표별 trade-off, 기간 불일치.
+
+### 5~6단계 구현 상태 (완료)
+
+- 불변 `FinancialEvent` 6종과 요청 DTO를 분리했다. 이벤트는 저장하지 않으며 계산 코어는 Jackson, HTTP, Spring, JPA, AI에 의존하지 않는다.
+- `MonthlyAdjustmentProvider`를 기존 월별 엔진에 주입해 baseline과 what-if가 동일 계산 코드를 사용한다.
+- `POST /api/simulations/compare`가 최신 Profile 스냅샷을 읽어 baseline/what-if 전체 결과, 체크포인트·최종 delta, 영향 요약과 경고를 반환한다.
+- 이벤트 순서 독립성, 범위 정규화, clamp, 추가 상환 제약과 3개 golden case를 자동 테스트로 고정했다.
+- 다음 단계는 7. Goal Reverse Simulation이며 시나리오 저장과 자연어 처리는 아직 범위 밖이다.
 
 ## 7. Goal Reverse Simulation
 

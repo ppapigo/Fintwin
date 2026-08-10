@@ -1,13 +1,13 @@
 package com.fintwin.fintwin.financialprofile.dto;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
-public record FinancialProfileCreateRequest(
+public record FinancialProfileUpdateRequest(
         @NotNull @DecimalMin("0.00") @Digits(integer = 17, fraction = 2) BigDecimal monthlyIncome,
         @NotNull @DecimalMin("0.00") @Digits(integer = 17, fraction = 2) BigDecimal cashAssets,
         @NotNull @DecimalMin("0.00") @Digits(integer = 17, fraction = 2) BigDecimal deposits,

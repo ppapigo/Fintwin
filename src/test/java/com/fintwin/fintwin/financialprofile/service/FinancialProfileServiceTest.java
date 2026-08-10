@@ -38,23 +38,25 @@ class FinancialProfileServiceTest {
     void createsFinancialProfile() {
         User user = new User(1L);
         FinancialProfileCreateRequest request = validRequest();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
         when(financialProfileRepository.existsByUserId(1L)).thenReturn(false);
-        when(financialProfileRepository.save(any(FinancialProfile.class)))
+        when(financialProfileRepository.saveAndFlush(any(FinancialProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         FinancialProfileResponse response = service.create(1L, request);
 
         assertThat(response.userId()).isEqualTo(1L);
+        assertThat(response.version()).isEqualTo(1);
+        assertThat(response.previousProfileId()).isNull();
         assertThat(response.monthlyIncome()).isEqualByComparingTo("5000000.00");
         assertThat(response.totalLoanBalance()).isEqualByComparingTo("10000000.00");
     }
 
     @Test
     void rejectsMissingProfile() {
-        when(financialProfileRepository.findByUserId(99L)).thenReturn(Optional.empty());
+        when(financialProfileRepository.findFirstByUserIdOrderByVersionDesc(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getByUserId(99L))
+        assertThatThrownBy(() -> service.getCurrent(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Financial profile not found");
     }

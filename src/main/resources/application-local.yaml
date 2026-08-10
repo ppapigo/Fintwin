@@ -1,8 +1,10 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fintwin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
-    username: ${DB_USERNAME:fintwin}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/${MYSQL_DATABASE:fintwin}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:${MYSQL_USER:fintwin}}
+    password: ${DB_PASSWORD:${MYSQL_PASSWORD:}}
   jpa:
     hibernate:
       ddl-auto: update

@@ -2,6 +2,8 @@ package com.fintwin.fintwin.financialprofile.controller;
 
 import com.fintwin.fintwin.auth.CurrentUserIdProvider;
 import com.fintwin.fintwin.financialprofile.service.FinancialProfileService;
+import com.fintwin.fintwin.global.error.ConflictException;
+import com.fintwin.fintwin.global.error.ResourceNotFoundException;
 import com.fintwin.fintwin.global.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +64,74 @@ class FinancialProfileControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void returnsConflictForDuplicateInitialCreation() throws Exception {
+        doThrow(new ConflictException("Financial profile already exists"))
+                .when(service).create(org.mockito.ArgumentMatchers.eq(1L), any());
+
+        mockMvc.perform(post("/api/financial-profiles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RESOURCE_CONFLICT"));
+    }
+
+    @Test
+    void rejectsNegativeAmountOnUpdate() throws Exception {
+        mockMvc.perform(put("/api/financial-profiles/current")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validJson().replace("3000000.00", "-1.00")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("cashAssets"));
+    }
+
+    @Test
+    void rejectsMissingRequiredValuesOnUpdate() throws Exception {
+        mockMvc.perform(put("/api/financial-profiles/current")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void acceptsFullReplacementUpdate() throws Exception {
+        mockMvc.perform(put("/api/financial-profiles/current")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validJson()))
+                .andExpect(status().isOk());
+
+        verify(service).updateCurrent(org.mockito.ArgumentMatchers.eq(1L), any());
+    }
+
+    @Test
+    void returnsNotFoundWhenCurrentProfileDoesNotExist() throws Exception {
+        when(service.getCurrent(1L)).thenThrow(new ResourceNotFoundException("Financial profile not found"));
+
+        mockMvc.perform(get("/api/financial-profiles/current"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void individualSnapshotLookupUsesCurrentUserId() throws Exception {
+        mockMvc.perform(get("/api/financial-profiles/55"))
+                .andExpect(status().isOk());
+
+        verify(service).getSnapshot(1L, 55L);
+    }
+
+    @Test
+    void rejectsLoanInterestRateAboveDomainMaximum() throws Exception {
+        mockMvc.perform(put("/api/financial-profiles/current")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validJson().replace("4.2500", "100.0001")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("loanInterestRate"));
     }
 
     private String validJson() {
