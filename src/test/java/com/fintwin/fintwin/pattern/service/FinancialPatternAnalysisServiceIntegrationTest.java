@@ -62,12 +62,12 @@ class FinancialPatternAnalysisServiceIntegrationTest {
 
     @Test
     void comparesDraftWithLatestProfileVersionWithoutMutatingSnapshots() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest());
-        FinancialProfileResponse latest = financialProfileService.updateCurrent(1L, updateRequest());
+        Long userId = userRepository.saveAndFlush(User.create()).getId();
+        financialProfileService.create(userId, createRequest());
+        FinancialProfileResponse latest = financialProfileService.updateCurrent(userId, updateRequest());
         long profileCountBefore = financialProfileRepository.count();
 
-        FinancialPatternAnalysisResponse response = analysisService.analyze(1L, validCsv());
+        FinancialPatternAnalysisResponse response = analysisService.analyze(userId, validCsv());
 
         var comparison = response.currentProfileComparison();
         assertThat(comparison.financialProfileId()).isEqualTo(latest.id());
@@ -81,8 +81,8 @@ class FinancialPatternAnalysisServiceIntegrationTest {
         assertThat(response.profileDraft().preservedExistingFields().cashAssets())
                 .isEqualByComparingTo("3100.00");
         assertThat(financialProfileRepository.count()).isEqualTo(profileCountBefore);
-        assertThat(financialProfileService.getCurrent(1L).id()).isEqualTo(latest.id());
-        assertThat(financialProfileService.getHistory(1L)).hasSize(2);
+        assertThat(financialProfileService.getCurrent(userId).id()).isEqualTo(latest.id());
+        assertThat(financialProfileService.getHistory(userId)).hasSize(2);
     }
 
     @Test

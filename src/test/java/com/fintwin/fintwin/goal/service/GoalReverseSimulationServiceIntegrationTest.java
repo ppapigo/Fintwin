@@ -50,16 +50,16 @@ class GoalReverseSimulationServiceIntegrationTest {
 
     @Test
     void usesLatestProfileKeepsSnapshotsImmutableAndMatchesBaselineApi() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest("2000000"));
-        FinancialProfileResponse latest = financialProfileService.updateCurrent(1L, updateRequest("3000000"));
-        FinancialProfileResponse before = financialProfileService.getCurrent(1L);
+        Long userId = createUser();
+        financialProfileService.create(userId, createRequest("2000000"));
+        FinancialProfileResponse latest = financialProfileService.updateCurrent(userId, updateRequest("3000000"));
+        FinancialProfileResponse before = financialProfileService.getCurrent(userId);
         GoalReverseSimulationRequest request = request("TARGET_NET_WORTH", "50000000", 12);
 
-        GoalReverseSimulationResponse response = goalService.reverseSimulate(1L, request);
-        BaselineSimulationResponse directBaseline = baselineService.simulate(1L,
+        GoalReverseSimulationResponse response = goalService.reverseSimulate(userId, request);
+        BaselineSimulationResponse directBaseline = baselineService.simulate(userId,
                 new BaselineSimulationRequest(START, 12, request.assumptions()));
-        FinancialProfileResponse after = financialProfileService.getCurrent(1L);
+        FinancialProfileResponse after = financialProfileService.getCurrent(userId);
 
         assertThat(response.financialProfileId()).isEqualTo(latest.id());
         assertThat(response.financialProfileVersion()).isEqualTo(2);
@@ -75,9 +75,9 @@ class GoalReverseSimulationServiceIntegrationTest {
 
     @Test
     void returnsNotFoundWhenCurrentProfileDoesNotExist() {
-        userRepository.save(new User(1L));
+        Long userId = createUser();
 
-        assertThatThrownBy(() -> goalService.reverseSimulate(1L,
+        assertThatThrownBy(() -> goalService.reverseSimulate(userId,
                 request("TARGET_NET_WORTH", "1000000", 12)))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Financial profile not found");
@@ -98,13 +98,17 @@ class GoalReverseSimulationServiceIntegrationTest {
 
     @Test
     void requiresDebtPaymentWhenLatestProfileHasDebt() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequestWithDebt("1000000"));
+        Long userId = createUser();
+        financialProfileService.create(userId, createRequestWithDebt("1000000"));
 
-        assertThatThrownBy(() -> goalService.reverseSimulate(1L,
+        assertThatThrownBy(() -> goalService.reverseSimulate(userId,
                 request("TARGET_NET_WORTH", "1000000", 12)))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("monthlyDebtPayment is required when debt exists");
+    }
+
+    private Long createUser() {
+        return userRepository.saveAndFlush(User.create()).getId();
     }
 
     private GoalReverseSimulationRequest request(String goalType, String target, int horizon) {

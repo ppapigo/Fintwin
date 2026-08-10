@@ -11,6 +11,15 @@ spring:
   jpa:
     open-in-view: false
 
+server:
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        path: /
+        same-site: lax
+
 management:
   endpoints:
     web:
@@ -22,9 +31,16 @@ management:
 
 fintwin:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
-  auth:
-    temporary-user-id: ${TEMPORARY_USER_ID:1}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  oauth:
+    enabled: ${FINTWIN_OAUTH_ENABLED:false}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
   ai:
     enabled: ${FINTWIN_AI_ENABLED:false}
     provider: openai

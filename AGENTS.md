@@ -26,6 +26,9 @@
 - OpenAI Adapter는 `ExternalAiScenarioRequest`만 입력받고 Responses API를 요청당 최대 1회 호출한다. `store=false`를 유지하며 tool, streaming, retry, 모델 fallback, 대화 상태를 추가하지 않는다.
 - Provider 응답은 untrusted draft로 간주하고 strict 파싱, `ExternalAiDraftValidator`, Reference 재결합, `FinancialEventMapper` 검증을 모두 통과시킨다.
 - AI 설정은 기본 비활성화하며 실제 API Key는 환경변수 또는 운영 Secret 저장소에서만 주입한다. 원문 요청·Provider 응답·Vault를 DB, Trace, 로그에 저장하지 않는다.
+- 인증 사용자는 `SecurityContext -> FinTwinPrincipal -> internal userId`로만 식별한다. Header·Query·고정 ID·Provider Subject fallback을 금지한다.
+- OAuth Identity는 Provider와 Subject 복합 UNIQUE로 관리하고 이메일 자동 병합, Provider Token/응답 저장, Profile 자동 생성을 금지한다.
+- OAuth2 Login은 서버 세션, CSRF, HttpOnly/SameSite 쿠키와 명시적 credentialed CORS를 유지한다. JWT·Redis·Spring Session은 현재 범위에 추가하지 않는다.
 - 비밀번호, OAuth/JWT Secret, DB 접속정보를 코드·설정·Git에 하드코딩하지 않는다. 민감정보를 로그에 남기지 않는다.
 - 새 라이브러리는 필요성과 기존 대안을 먼저 확인하며, 현재 필요 없는 인프라는 추가하지 않는다.
 - 변경 후 관련 테스트와 전체 `./gradlew test`를 실행한다.

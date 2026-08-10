@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -13,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static com.fintwin.fintwin.auth.security.FinTwinSecurityTestSupport.fintwinUser;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,9 +86,9 @@ class FintwinApplicationTests {
 	}
 
 	@Test
-	@WithMockUser
 	void naturalLanguageAgentFailsClosedWhenAiIsDisabled() throws Exception {
 		mockMvc.perform(post("/api/agent/natural-language")
+					.with(fintwinUser(1L))
 					.with(csrf())
 					.contentType("application/json")
 					.content(validNaturalLanguageRequest()))
@@ -97,9 +97,9 @@ class FintwinApplicationTests {
 	}
 
 	@Test
-	@WithMockUser
 	void agentReturnsNeedsInputAsAValidStructuredResponse() throws Exception {
 		mockMvc.perform(post("/api/agent/execute")
+					.with(fintwinUser(1L))
 					.with(csrf())
 					.contentType("application/json")
 					.content("{\"intent\":\"BASELINE_SIMULATION\"}"))
@@ -113,9 +113,9 @@ class FintwinApplicationTests {
 	}
 
 	@Test
-	@WithMockUser
 	void malformedAgentRequestUsesCommonBadRequestResponse() throws Exception {
 		mockMvc.perform(post("/api/agent/execute")
+					.with(fintwinUser(1L))
 					.with(csrf())
 					.contentType("application/json")
 					.content("{\"intent\":\"BASELINE_SIMULATION\",\"startYearMonth\":\"invalid\"}"))
@@ -133,14 +133,14 @@ class FintwinApplicationTests {
 	}
 
 	@Test
-	@WithMockUser
 	void authenticatedUserCanAnalyzeCsvWithoutExistingProfile() throws Exception {
 		MockMultipartFile file = new MockMultipartFile("file", "synthetic.csv", "text/csv", """
 				transactionDate,type,amount,category,description
 				2026-01-01,INCOME,1000,SALARY,Synthetic Salary
 				""".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
-		mockMvc.perform(multipart("/api/patterns/analyze-csv").file(file).with(csrf()))
+		mockMvc.perform(multipart("/api/patterns/analyze-csv").file(file)
+					.with(fintwinUser(1L)).with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.algorithmVersion").value("fintwin-pattern-v1"))
 				.andExpect(jsonPath("$.transactionCount").value(1))
@@ -157,9 +157,9 @@ class FintwinApplicationTests {
 	}
 
 	@Test
-	@WithMockUser
 	void authenticatedUserCanPreviewPrivacySafePayload() throws Exception {
 		mockMvc.perform(post("/api/privacy/scenario-payload-preview")
+					.with(fintwinUser(1L))
 					.with(csrf())
 					.contentType("application/json")
 					.content("{\"scenarioText\":\"내년에 3천만원을 쓰면?\"}"))

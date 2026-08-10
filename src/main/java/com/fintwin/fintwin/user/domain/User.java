@@ -2,6 +2,8 @@ package com.fintwin.fintwin.user.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -17,6 +19,7 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, updatable = false)
@@ -24,6 +27,10 @@ public class User {
 
     public User(Long id) {
         this.id = id;
+    }
+
+    public static User create() {
+        return new User();
     }
 
     @PrePersist

@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
@@ -15,6 +16,13 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ApiErrorResponse> handleAuthentication(AuthenticationException exception,
+                                                           HttpServletRequest request) {
+        return response(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "Authentication is required",
+                request, List.of());
+    }
+
     @ExceptionHandler(AiAdapterException.class)
     ResponseEntity<ApiErrorResponse> handleAiAdapter(AiAdapterException exception, HttpServletRequest request) {
         return response(exception.httpStatus(), exception.code().name(), exception.getMessage(), request, List.of());

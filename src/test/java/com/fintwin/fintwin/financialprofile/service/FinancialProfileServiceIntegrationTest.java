@@ -40,9 +40,9 @@ class FinancialProfileServiceIntegrationTest {
 
     @Test
     void initialCreationStartsAtVersionOne() {
-        userRepository.save(new User(1L));
+        Long userId = createUser();
 
-        FinancialProfileResponse created = service.create(1L, createRequest("5000000.00"));
+        FinancialProfileResponse created = service.create(userId, createRequest("5000000.00"));
 
         assertThat(created.version()).isEqualTo(1);
         assertThat(created.previousProfileId()).isNull();
@@ -50,38 +50,38 @@ class FinancialProfileServiceIntegrationTest {
 
     @Test
     void duplicateInitialCreationIsRejected() {
-        userRepository.save(new User(1L));
-        service.create(1L, createRequest("5000000.00"));
+        Long userId = createUser();
+        service.create(userId, createRequest("5000000.00"));
 
-        assertThatThrownBy(() -> service.create(1L, createRequest("6000000.00")))
+        assertThatThrownBy(() -> service.create(userId, createRequest("6000000.00")))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Financial profile already exists");
     }
 
     @Test
     void updateCreatesNextVersionWithoutChangingPreviousSnapshot() {
-        userRepository.save(new User(1L));
-        FinancialProfileResponse versionOne = service.create(1L, createRequest("5000000.00"));
+        Long userId = createUser();
+        FinancialProfileResponse versionOne = service.create(userId, createRequest("5000000.00"));
 
-        FinancialProfileResponse versionTwo = service.updateCurrent(1L, updateRequest("6000000.00"));
+        FinancialProfileResponse versionTwo = service.updateCurrent(userId, updateRequest("6000000.00"));
 
         assertThat(versionTwo.version()).isEqualTo(2);
         assertThat(versionTwo.previousProfileId()).isEqualTo(versionOne.id());
         assertThat(versionTwo.monthlyIncome()).isEqualByComparingTo("6000000.00");
 
-        FinancialProfileResponse unchangedVersionOne = service.getSnapshot(1L, versionOne.id());
+        FinancialProfileResponse unchangedVersionOne = service.getSnapshot(userId, versionOne.id());
         assertThat(unchangedVersionOne.version()).isEqualTo(1);
         assertThat(unchangedVersionOne.monthlyIncome()).isEqualByComparingTo("5000000.00");
     }
 
     @Test
     void currentAndHistoryUseDescendingVersionOrder() {
-        userRepository.save(new User(1L));
-        service.create(1L, createRequest("5000000.00"));
-        FinancialProfileResponse versionTwo = service.updateCurrent(1L, updateRequest("6000000.00"));
+        Long userId = createUser();
+        service.create(userId, createRequest("5000000.00"));
+        FinancialProfileResponse versionTwo = service.updateCurrent(userId, updateRequest("6000000.00"));
 
-        FinancialProfileResponse current = service.getCurrent(1L);
-        List<FinancialProfileResponse> history = service.getHistory(1L);
+        FinancialProfileResponse current = service.getCurrent(userId);
+        List<FinancialProfileResponse> history = service.getHistory(userId);
 
         assertThat(current.id()).isEqualTo(versionTwo.id());
         assertThat(current.version()).isEqualTo(2);
@@ -90,32 +90,36 @@ class FinancialProfileServiceIntegrationTest {
 
     @Test
     void missingCurrentProfileIsRejected() {
-        userRepository.save(new User(1L));
+        Long userId = createUser();
 
-        assertThatThrownBy(() -> service.getCurrent(1L))
+        assertThatThrownBy(() -> service.getCurrent(userId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Financial profile not found");
     }
 
     @Test
     void snapshotOwnedByAnotherUserIsHidden() {
-        userRepository.save(new User(1L));
-        userRepository.save(new User(2L));
-        FinancialProfileResponse userOneProfile = service.create(1L, createRequest("5000000.00"));
+        Long userOneId = createUser();
+        Long userTwoId = createUser();
+        FinancialProfileResponse userOneProfile = service.create(userOneId, createRequest("5000000.00"));
 
-        assertThatThrownBy(() -> service.getSnapshot(2L, userOneProfile.id()))
+        assertThatThrownBy(() -> service.getSnapshot(userTwoId, userOneProfile.id()))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Financial profile not found");
     }
 
     @Test
     void databaseRejectsDuplicateUserVersion() {
-        User user = userRepository.save(new User(1L));
+        User user = userRepository.save(User.create());
         financialProfileRepository.saveAndFlush(FinancialProfile.createInitial(user, createRequest("5000000.00")));
 
         assertThatThrownBy(() -> financialProfileRepository.saveAndFlush(
                 FinancialProfile.createInitial(user, createRequest("6000000.00"))))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private Long createUser() {
+        return userRepository.saveAndFlush(User.create()).getId();
     }
 
     private FinancialProfileCreateRequest createRequest(String monthlyIncome) {

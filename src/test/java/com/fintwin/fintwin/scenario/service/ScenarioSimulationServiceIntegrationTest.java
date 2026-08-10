@@ -43,13 +43,14 @@ class ScenarioSimulationServiceIntegrationTest {
 
     @Test
     void usesLatestProfileSnapshotWithoutMutatingItAndReturnsWhatIfMinusBaselineDelta() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest("2000000"));
-        FinancialProfileResponse latest = financialProfileService.updateCurrent(1L, updateRequest("3000000"));
-        FinancialProfileResponse before = financialProfileService.getCurrent(1L);
+        Long userId = userRepository.saveAndFlush(User.create()).getId();
+        financialProfileService.create(userId, createRequest("2000000"));
+        FinancialProfileResponse latest = financialProfileService.updateCurrent(userId,
+                updateRequest("3000000"));
+        FinancialProfileResponse before = financialProfileService.getCurrent(userId);
 
-        ScenarioComparisonResponse response = scenarioSimulationService.compare(1L, request());
-        FinancialProfileResponse after = financialProfileService.getCurrent(1L);
+        ScenarioComparisonResponse response = scenarioSimulationService.compare(userId, request());
+        FinancialProfileResponse after = financialProfileService.getCurrent(userId);
 
         assertThat(response.financialProfileId()).isEqualTo(latest.id());
         assertThat(response.financialProfileVersion()).isEqualTo(2);

@@ -117,10 +117,12 @@
 
 ## 12. Spring Security·Google·Kakao 로그인
 
-- 목표: OAuth2 로그인과 애플리케이션 사용자 연결, 세션/토큰 정책을 확정한다.
-- 주요 클래스: `OAuth2UserService`, `OAuth2LoginSuccessHandler`, `UserPrincipal`, provider mapper.
-- 완료 조건: 임시 `CurrentUserIdProvider`가 실제 인증 principal 기반 구현으로 교체되고 secret은 환경변수에만 존재한다.
-- 테스트: Google/Kakao 매핑, 신규/기존 사용자, 실패·취소, CSRF/CORS, 접근 제어.
+- 상태: 단일 인스턴스 세션 기반 Google·Kakao OAuth2 Login MVP 완료.
+- 목표: 공식 Spring Security OAuth2 Client로 Provider 인증을 처리하고 최소 Provider Subject를 내부 User와 분리한다.
+- 주요 클래스: `OAuthIdentity`, `OAuthIdentityProvisioningService`, `FinTwinPrincipal`, `FinTwinOAuth2UserService`, `FinTwinOidcUserService`, `SecurityContextCurrentUserIdProvider`, `AuthController`.
+- 완료 조건: 임시 사용자 fallback 없이 실제 Principal의 내부 User ID만 사용하고, 이메일 자동 병합·Provider Token/응답 저장·JWT를 두지 않는다. 성공/실패 Redirect는 설정된 Frontend Origin으로 고정하며 CSRF, credentialed CORS, HttpOnly/SameSite/Secure 쿠키 정책을 유지한다.
+- 테스트: Google/Kakao 최소 Attribute 매핑, 최초/재로그인, Provider 분리, 동시 생성 UNIQUE, Principal 강제, 인증 위조 차단, 고정 Redirect, CSRF/me/logout, CORS, session fixation 설정, Profile·Simulation·Goal·Agent 사용자 분리.
+- 운영 문서: `docs/OAUTH2_LOGIN.md`, `docs/sql/oauth_identity_mysql8.sql`.
 
 ## 13. React JavaScript 프론트엔드
 

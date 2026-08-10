@@ -43,14 +43,14 @@ class BaselineSimulationServiceIntegrationTest {
 
     @Test
     void usesLatestProfileVersionWithoutChangingSnapshot() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest("500.00", "0.00"));
-        FinancialProfileResponse versionTwo = financialProfileService.updateCurrent(1L,
+        Long userId = createUser();
+        financialProfileService.create(userId, createRequest("500.00", "0.00"));
+        FinancialProfileResponse versionTwo = financialProfileService.updateCurrent(userId,
                 updateRequest("600.00", "0.00"));
-        FinancialProfileResponse beforeSimulation = financialProfileService.getCurrent(1L);
+        FinancialProfileResponse beforeSimulation = financialProfileService.getCurrent(userId);
 
-        BaselineSimulationResponse response = simulationService.simulate(1L, baselineRequest(BigDecimal.ZERO));
-        FinancialProfileResponse afterSimulation = financialProfileService.getCurrent(1L);
+        BaselineSimulationResponse response = simulationService.simulate(userId, baselineRequest(BigDecimal.ZERO));
+        FinancialProfileResponse afterSimulation = financialProfileService.getCurrent(userId);
 
         assertThat(response.financialProfileId()).isEqualTo(versionTwo.id());
         assertThat(response.financialProfileVersion()).isEqualTo(2);
@@ -60,20 +60,20 @@ class BaselineSimulationServiceIntegrationTest {
 
     @Test
     void rejectsMissingDebtPaymentWhenProfileHasDebt() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest("500.00", "1000.00"));
+        Long userId = createUser();
+        financialProfileService.create(userId, createRequest("500.00", "1000.00"));
 
-        assertThatThrownBy(() -> simulationService.simulate(1L, baselineRequest(null)))
+        assertThatThrownBy(() -> simulationService.simulate(userId, baselineRequest(null)))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("monthlyDebtPayment is required when debt exists");
     }
 
     @Test
     void treatsMissingDebtPaymentAsZeroWhenProfileHasNoDebt() {
-        userRepository.save(new User(1L));
-        financialProfileService.create(1L, createRequest("500.00", "0.00"));
+        Long userId = createUser();
+        financialProfileService.create(userId, createRequest("500.00", "0.00"));
 
-        BaselineSimulationResponse response = simulationService.simulate(1L, baselineRequest(null));
+        BaselineSimulationResponse response = simulationService.simulate(userId, baselineRequest(null));
 
         assertThat(response.assumptions().monthlyDebtPayment()).isEqualByComparingTo("0");
         assertThat(response.monthlyResults().getFirst().debtPayment()).isEqualByComparingTo("0.00");
@@ -81,11 +81,15 @@ class BaselineSimulationServiceIntegrationTest {
 
     @Test
     void rejectsSimulationWhenCurrentProfileDoesNotExist() {
-        userRepository.save(new User(1L));
+        Long userId = createUser();
 
-        assertThatThrownBy(() -> simulationService.simulate(1L, baselineRequest(BigDecimal.ZERO)))
+        assertThatThrownBy(() -> simulationService.simulate(userId, baselineRequest(BigDecimal.ZERO)))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Financial profile not found");
+    }
+
+    private Long createUser() {
+        return userRepository.saveAndFlush(User.create()).getId();
     }
 
     private BaselineSimulationRequest baselineRequest(BigDecimal monthlyDebtPayment) {
