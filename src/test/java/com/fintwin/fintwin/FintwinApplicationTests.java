@@ -78,6 +78,25 @@ class FintwinApplicationTests {
 	}
 
 	@Test
+	void naturalLanguageAgentApiRequiresAuthentication() throws Exception {
+		mockMvc.perform(post("/api/agent/natural-language")
+					.contentType("application/json")
+					.content(validNaturalLanguageRequest()))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser
+	void naturalLanguageAgentFailsClosedWhenAiIsDisabled() throws Exception {
+		mockMvc.perform(post("/api/agent/natural-language")
+					.with(csrf())
+					.contentType("application/json")
+					.content(validNaturalLanguageRequest()))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("AI_DISABLED"));
+	}
+
+	@Test
 	@WithMockUser
 	void agentReturnsNeedsInputAsAValidStructuredResponse() throws Exception {
 		mockMvc.perform(post("/api/agent/execute")
@@ -148,6 +167,23 @@ class FintwinApplicationTests {
 				.andExpect(jsonPath("$.status").value("SAFE"))
 				.andExpect(jsonPath("$.externalPayload.sanitizedScenarioText")
 						.value("내년에 [MONEY_1]을 쓰면?"));
+	}
+
+	private String validNaturalLanguageRequest() {
+		return """
+				{
+				  "scenarioText": "내년에 3천만원 자동차를 사면?",
+				  "startYearMonth": "2026-08",
+				  "horizonMonths": 36,
+				  "assumptions": {
+				    "annualIncomeGrowthRate": 2.0,
+				    "annualInflationRate": 2.0,
+				    "annualDepositInterestRate": 2.5,
+				    "annualInvestmentReturnRate": 4.0,
+				    "monthlyDebtPayment": 300000
+				  }
+				}
+				""";
 	}
 
 }

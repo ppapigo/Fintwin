@@ -25,3 +25,13 @@ fintwin:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   auth:
     temporary-user-id: ${TEMPORARY_USER_ID:1}
+  ai:
+    enabled: ${FINTWIN_AI_ENABLED:false}
+    provider: openai
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5.6-luna}
+    connect-timeout: ${OPENAI_CONNECT_TIMEOUT:3s}
+    read-timeout: ${OPENAI_READ_TIMEOUT:15s}
+    max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:1200}
+    max-response-bytes: ${OPENAI_MAX_RESPONSE_BYTES:65536}

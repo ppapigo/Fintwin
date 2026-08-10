@@ -14,14 +14,14 @@ FinTwin의 외부 AI는 사용자의 금융 상태를 계산하거나 분석하�
   -> 로컬 금융값 토큰화
   -> 요청 범위 FinancialReferenceVault
   -> 강타입 ExternalAiScenarioRequest allowlist 검사
-  -> 향후 ExternalAiGateway
+  -> ExternalAiGateway / OpenAI Responses API (요청당 1회, store=false)
   -> 강타입 ExternalAiScenarioDraft 전체 검증
   -> 검증된 Reference ID 단건 재결합
   -> 기존 FinancialEventMapper 검증
   -> 기존 결정론적 Simulation Engine
 ```
 
-현재 단계에는 실제 External AI Gateway Bean, OpenAI SDK, HTTP Client, API Key, Prompt 및 네트워크 호출이 없다.
+AI를 명시적으로 활성화한 경우에만 `RestClient` 기반 Gateway Bean이 생성된다. OpenAI SDK와 Spring AI는 사용하지 않으며, 기본값은 비활성화다. Gateway는 이 문서의 allowlist DTO만 입력받고 Provider 응답은 strict 검증 후에도 untrusted draft로 취급한다.
 
 ## 외부 AI 허용 데이터
 
@@ -170,6 +170,6 @@ BLOCKED 응답은 `externalPayload: null`, 빈 `references`, 탐지 유형만 �
 
 현재 단계에서는 감사 정보를 DB에 저장하지 않는다. 정책 버전, 목적, SAFE/BLOCKED, Reference 수, PII 유형, 처리 시각 같은 비금융 메타데이터만 향후 요청 범위에서 생성할 수 있다. 원문, sanitized text, Vault, 실제 금융값, 사용자 금융정보와 AI 응답 원문은 감사 데이터가 될 수 없다.
 
-## 향후 External AI Adapter 연결 조건
+## External AI Adapter 연결 조건
 
-향후 Adapter는 오직 `ExternalAiGateway`를 구현하고 `ExternalAiScenarioRequest`만 받아야 한다. 응답 JSON은 알 수 없는 필드를 거절하는 엄격한 역직렬화 후 `ExternalAiDraftValidator`를 통과해야 한다. Vault와 Profile·Pattern·Simulation·Repository는 Adapter 생성자와 메서드에 추가할 수 없다.
+Adapter는 오직 `ExternalAiGateway`를 구현하고 `ExternalAiScenarioRequest`만 받는다. 응답 JSON은 알 수 없는 필드와 trailing token을 거절하는 엄격한 역직렬화 후 `ExternalAiDraftValidator`, `ReferenceRehydrator`, `FinancialEventMapper`를 통과한다. Vault와 Profile·Pattern·Simulation·Goal·Repository는 Adapter 생성자와 메서드에 추가할 수 없다. 요청/응답 원문과 Reference 대응표는 저장·로깅하지 않는다. 자세한 운영 계약은 `docs/OPENAI_ADAPTER.md`를 따른다.

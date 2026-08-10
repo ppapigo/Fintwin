@@ -170,12 +170,13 @@ What-if 요청은 같은 공통 필드와 구조화된 `events`를 사용하며,
 
 ## Privacy Boundary 연결
 
-향후 자연어 흐름은 다음 경계 순서를 유지한다.
+자연어 What-if 흐름은 다음 경계 순서를 유지한다.
 
 ```text
 Natural language
   -> Strict Privacy Boundary
   -> ExternalAiScenarioRequest
+  -> OpenAI Responses API / strict Structured Output
   -> ExternalAiScenarioDraft
   -> ExternalAiDraftValidator
   -> ReferenceRehydrator
@@ -185,11 +186,11 @@ Natural language
   -> Scenario Tool
 ```
 
-`ValidatedScenarioAgentCommandFactory`는 Privacy 패키지 안에서 `ReferenceRehydrator` 검증이 성공한 Draft만 What-if Command로 변환한다. Agent 패키지는 Vault와 External AI Gateway에 의존하지 않는다. Profile, 거래, Pattern/Simulation/Goal 결과, Risk와 Agent 응답은 외부 AI Payload로 보내지 않는다. 외부 AI는 금융 계산이나 Tool 실행을 담당하지 않는다.
+`ValidatedScenarioAgentCommandFactory`는 Privacy 패키지 안에서 `ReferenceRehydrator` 검증이 성공한 Draft만 What-if Command로 변환한다. Agent 패키지는 Vault와 External AI Gateway에 의존하지 않는다. Profile, 거래, Pattern/Simulation/Goal 결과, Risk와 Agent 응답은 외부 AI Payload로 보내지 않는다. 외부 AI는 금융 계산이나 Tool 실행을 담당하지 않는다. 연결과 오류 정책은 `docs/OPENAI_ADAPTER.md`를 따른다.
 
 ## 지원하지 않는 기능
 
-- 실제 OpenAI/외부 AI 호출과 자연어 Intent 분류
+- Baseline·Goal 자연어 실행과 범용 자연어 Intent 분류
 - 자유형 Agent loop, Multi-agent, Tool 재시도·연쇄·병렬 실행
 - Pattern CSV Tool 연결, 시나리오·실행 이력 저장
 - 금융상품·투자 추천, 신규 대출·자동차 할부

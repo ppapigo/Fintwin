@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent", "events", "missingFields"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["PURCHASE", "EXPENSE_CHANGE", "INCOME_CHANGE", "INCOME_PAUSE", "INVESTMENT_CHANGE", "DEBT_REPAYMENT", "MULTI_EVENT", "UNKNOWN"]
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["eventId", "eventType", "changeDirection", "effectiveDateExpression", "effectiveDateReference", "startDateExpression", "startDateReference", "endDateExpression", "endDateReference", "durationReference", "amountReference", "monthlyDeltaReference", "description"],
+        "properties": {
+          "eventId": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"},
+          "eventType": {"type": ["string", "null"], "enum": ["ONE_TIME_EXPENSE", "RECURRING_EXPENSE_CHANGE", "INCOME_CHANGE", "INCOME_PAUSE", "INVESTMENT_CONTRIBUTION_CHANGE", "EXTRA_DEBT_REPAYMENT", null]},
+          "changeDirection": {"type": ["string", "null"], "enum": ["INCREASE", "DECREASE", null]},
+          "effectiveDateExpression": {"type": ["string", "null"], "maxLength": 100},
+          "effectiveDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
+          "startDateExpression": {"type": ["string", "null"], "maxLength": 100},
+          "startDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
+          "endDateExpression": {"type": ["string", "null"], "maxLength": 100},
+          "endDateReference": {"type": ["string", "null"], "pattern": "^DATE_[1-9][0-9]*$"},
+          "durationReference": {"type": ["string", "null"], "pattern": "^DURATION_[1-9][0-9]*$"},
+          "amountReference": {"type": ["string", "null"], "pattern": "^MONEY_[1-9][0-9]*$"},
+          "monthlyDeltaReference": {"type": ["string", "null"], "pattern": "^MONEY_[1-9][0-9]*$"},
+          "description": {"type": ["string", "null"], "maxLength": 200}
+        }
+      }
+    },
+    "missingFields": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "enum": ["EVENT_TYPE", "EFFECTIVE_DATE", "START_DATE", "END_DATE", "DURATION", "AMOUNT", "MONTHLY_DELTA", "DESCRIPTION"]
+      }
+    }
+  }
+}

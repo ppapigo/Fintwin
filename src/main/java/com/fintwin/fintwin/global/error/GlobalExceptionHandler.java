@@ -1,5 +1,6 @@
 package com.fintwin.fintwin.global.error;
 
+import com.fintwin.fintwin.ai.openai.error.AiAdapterException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,11 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(AiAdapterException.class)
+    ResponseEntity<ApiErrorResponse> handleAiAdapter(AiAdapterException exception, HttpServletRequest request) {
+        return response(exception.httpStatus(), exception.code().name(), exception.getMessage(), request, List.of());
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", exception.getMessage(), request, List.of());

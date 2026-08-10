@@ -9,7 +9,6 @@ import com.fintwin.fintwin.scenario.domain.FinancialEventType;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -73,6 +72,145 @@ public final class ExternalAiDraftValidator {
                 case RECURRING_EXPENSE_CHANGE, INCOME_CHANGE, INVESTMENT_CONTRIBUTION_CHANGE ->
                         validateMonthlyChange(event, vault);
             }
+        }
+    }
+
+    public void validateProviderDraft(ExternalAiScenarioDraft draft, FinancialReferenceVault vault) {
+        if (draft == null || vault == null) {
+            throw invalid("External AI draft is required");
+        }
+        String intent = requireText(draft.intent(), "intent", 50);
+        if (!ALLOWED_INTENTS.contains(intent)) {
+            throw invalid("External AI draft intent is not supported");
+        }
+        validateMissingFields(draft.missingFields());
+        if (draft.missingFields().isEmpty()) {
+            validate(draft, vault);
+            return;
+        }
+        if (draft.events() == null || draft.events().size() > MAX_EVENTS) {
+            throw invalid("External AI draft events must contain at most 20 items");
+        }
+        Set<String> missingFields = Set.copyOf(draft.missingFields());
+        if (draft.events().isEmpty()) {
+            requireMissing(missingFields, "EVENT_TYPE");
+            return;
+        }
+
+        Set<String> eventIds = new HashSet<>();
+        for (ExternalAiScenarioDraft.EventDraft event : draft.events()) {
+            if (event == null) {
+                throw invalid("External AI draft contains an invalid event");
+            }
+            String eventId = requireText(event.eventId(), "eventId", MAX_EVENT_ID_LENGTH);
+            if (!EVENT_ID.matcher(eventId).matches() || !eventIds.add(eventId)) {
+                throw invalid("External AI draft event ID is invalid or duplicated");
+            }
+            if (hasText(event.description())) {
+                validateDescription(event.description());
+            } else {
+                requireMissing(missingFields, "DESCRIPTION");
+            }
+            if (!hasText(event.eventType())) {
+                requireMissing(missingFields, "EVENT_TYPE");
+                requireAbsent(event.changeDirection(), event.effectiveDateExpression(),
+                        event.effectiveDateReference(), event.startDateExpression(), event.startDateReference(),
+                        event.endDateExpression(), event.endDateReference(), event.durationReference(),
+                        event.amountReference(), event.monthlyDeltaReference());
+                continue;
+            }
+            FinancialEventType eventType = parseEventType(event.eventType());
+            switch (eventType) {
+                case ONE_TIME_EXPENSE, EXTRA_DEBT_REPAYMENT ->
+                        validateIncompleteOneTime(event, vault, missingFields);
+                case INCOME_PAUSE -> validateIncompleteIncomePause(event, vault, missingFields);
+                case RECURRING_EXPENSE_CHANGE, INCOME_CHANGE, INVESTMENT_CONTRIBUTION_CHANGE ->
+                        validateIncompleteMonthlyChange(event, vault, missingFields);
+            }
+        }
+    }
+
+    private void validateIncompleteOneTime(ExternalAiScenarioDraft.EventDraft event,
+                                           FinancialReferenceVault vault,
+                                           Set<String> missingFields) {
+        validateOptionalDateSelector(event.effectiveDateExpression(), event.effectiveDateReference(),
+                "EFFECTIVE_DATE", vault, missingFields);
+        validateOptionalReference(event.amountReference(), ReferenceType.MONEY, "AMOUNT", vault, missingFields);
+        requireAbsent(event.changeDirection(), event.startDateExpression(), event.startDateReference(),
+                event.endDateExpression(), event.endDateReference(), event.durationReference(),
+                event.monthlyDeltaReference());
+    }
+
+    private void validateIncompleteIncomePause(ExternalAiScenarioDraft.EventDraft event,
+                                               FinancialReferenceVault vault,
+                                               Set<String> missingFields) {
+        validateIncompletePeriod(event, vault, missingFields);
+        requireAbsent(event.changeDirection(), event.effectiveDateExpression(), event.effectiveDateReference(),
+                event.amountReference(), event.monthlyDeltaReference());
+    }
+
+    private void validateIncompleteMonthlyChange(ExternalAiScenarioDraft.EventDraft event,
+                                                 FinancialReferenceVault vault,
+                                                 Set<String> missingFields) {
+        validateIncompletePeriod(event, vault, missingFields);
+        if (hasText(event.changeDirection())) {
+            if (!Set.of("INCREASE", "DECREASE").contains(event.changeDirection())) {
+                throw invalid("External AI draft change direction is not supported");
+            }
+        } else {
+            requireMissing(missingFields, "MONTHLY_DELTA");
+        }
+        validateOptionalReference(event.monthlyDeltaReference(), ReferenceType.MONEY,
+                "MONTHLY_DELTA", vault, missingFields);
+        requireAbsent(event.effectiveDateExpression(), event.effectiveDateReference(), event.amountReference());
+    }
+
+    private void validateIncompletePeriod(ExternalAiScenarioDraft.EventDraft event,
+                                          FinancialReferenceVault vault,
+                                          Set<String> missingFields) {
+        validateOptionalDateSelector(event.startDateExpression(), event.startDateReference(),
+                "START_DATE", vault, missingFields);
+        boolean hasEnd = hasText(event.endDateExpression()) || hasText(event.endDateReference());
+        boolean hasDuration = hasText(event.durationReference());
+        if (hasEnd && hasDuration) {
+            throw invalid("External AI draft period contains conflicting end selectors");
+        }
+        if (!hasEnd && !hasDuration) {
+            if (!missingFields.contains("END_DATE") && !missingFields.contains("DURATION")) {
+                throw invalid("External AI draft period missing field is not declared");
+            }
+        } else if (hasEnd) {
+            requireDateSelector(event.endDateExpression(), event.endDateReference(), vault);
+        } else {
+            requireReference(event.durationReference(), ReferenceType.DURATION, vault);
+        }
+    }
+
+    private void validateOptionalDateSelector(String expression, String reference,
+                                              String missingCode,
+                                              FinancialReferenceVault vault,
+                                              Set<String> missingFields) {
+        if (!hasText(expression) && !hasText(reference)) {
+            requireMissing(missingFields, missingCode);
+            return;
+        }
+        requireDateSelector(expression, reference, vault);
+    }
+
+    private void validateOptionalReference(String referenceId, ReferenceType expectedType,
+                                           String missingCode,
+                                           FinancialReferenceVault vault,
+                                           Set<String> missingFields) {
+        if (!hasText(referenceId)) {
+            requireMissing(missingFields, missingCode);
+            return;
+        }
+        requireReference(referenceId, expectedType, vault);
+    }
+
+    private void requireMissing(Set<String> missingFields, String code) {
+        if (!missingFields.contains(code)) {
+            throw invalid("External AI draft omitted a field without declaring it missing");
         }
     }
 
@@ -175,9 +313,9 @@ public final class ExternalAiDraftValidator {
     }
 
     private FinancialEventType parseEventType(String rawType) {
-        String normalized = requireText(rawType, "eventType", 100).toUpperCase(Locale.ROOT);
+        String exactType = requireText(rawType, "eventType", 100);
         try {
-            return FinancialEventType.valueOf(normalized);
+            return FinancialEventType.valueOf(exactType);
         } catch (IllegalArgumentException exception) {
             throw invalid("External AI draft event type is not supported");
         }

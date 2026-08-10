@@ -108,10 +108,12 @@
 
 ## 11. AI Adapter
 
-- 목표: 설명·요약에만 외부 AI를 선택적으로 사용하고 공급자를 교체 가능하게 한다.
-- 주요 클래스: `AiExplanationPort`, `AiAdapter`, `PromptPolicy`, `AiSafeFinancialSummary`.
-- 완료 조건: AI 실패 시 핵심 계산은 유지되고 원문·비밀·Entity가 전송되지 않는다.
-- 테스트: 전송 payload 계약, timeout/오류, 민감필드 부재, adapter mock.
+- 상태: Privacy-safe OpenAI 이벤트 구조화 MVP 완료.
+- 목표: 외부 AI를 자연어 What-if 이벤트 초안 구조화에만 선택적으로 사용하고 실제 금융 계산은 로컬 엔진에 유지한다.
+- 주요 클래스: `OpenAiExternalAiGateway`, `OpenAiProperties`, `OpenAiResponseParser`, `NaturalLanguageWhatIfService`, `NaturalLanguageWhatIfController`.
+- 완료 조건: `ExternalAiScenarioRequest` 8개 필드만 Responses API로 전송하고 `store=false`, strict Structured Output, Provider 1회 호출, 자동 retry/fallback 금지와 fail-closed 오류 정책을 지킨다. Draft는 기존 Validator·Reference 재결합·Event Mapper를 통과한 뒤에만 Agent로 전달한다.
+- 테스트: 설정 Validation, outbound allowlist, PII/Guard 0회 호출, prompt injection, Structured Output strict 파싱, Reference 재결합/타입, 누락정보, HTTP/timeout/refusal/incomplete/크기 오류, 인증/CSRF, Tool 0/1회, 정적 개인정보 의존성 검사.
+- 상세 계약: `docs/OPENAI_ADAPTER.md`.
 
 ## 12. Spring Security·Google·Kakao 로그인
 
