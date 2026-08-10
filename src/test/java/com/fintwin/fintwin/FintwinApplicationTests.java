@@ -94,4 +94,25 @@ class FintwinApplicationTests {
 						.value("Transaction data is not sent to an external AI or external API."));
 	}
 
+	@Test
+	void privacyPreviewApiRequiresAuthentication() throws Exception {
+		mockMvc.perform(post("/api/privacy/scenario-payload-preview")
+					.contentType("application/json")
+					.content("{\"scenarioText\":\"내년에 3천만원을 쓰면?\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser
+	void authenticatedUserCanPreviewPrivacySafePayload() throws Exception {
+		mockMvc.perform(post("/api/privacy/scenario-payload-preview")
+					.with(csrf())
+					.contentType("application/json")
+					.content("{\"scenarioText\":\"내년에 3천만원을 쓰면?\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("SAFE"))
+				.andExpect(jsonPath("$.externalPayload.sanitizedScenarioText")
+						.value("내년에 [MONEY_1]을 쓰면?"));
+	}
+
 }

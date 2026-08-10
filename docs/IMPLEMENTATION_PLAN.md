@@ -83,6 +83,12 @@
 
 ## 9. Privacy Boundary
 
+- 상태: Strict Privacy Boundary MVP 완료. 실제 외부 AI 호출 없이 PII 선차단, 금융값 Reference 토큰화, 요청 범위 Vault, 강타입 Payload allowlist와 Preview API를 구현했다.
+- 구현: `FinancialValueTokenizer`, `KoreanMoneyParser`, `FinancialReferenceVault`, `PersonalIdentifierDetector`, `OutboundPayloadGuard`, `ExternalAiDraftValidator`, `ReferenceRehydrator`, `ExternalAiGateway` 계약.
+- 외부 경계: Gateway는 `ExternalAiScenarioRequest`만 받을 수 있으며 Profile·거래·Pattern·Simulation·Goal·사용자 ID·Vault 타입을 받을 수 없다. 실제 Gateway Bean, SDK와 네트워크 호출은 없다.
+- Fail Closed: Draft 하나의 intent·이벤트·참조·필드라도 계약을 위반하면 전체를 거절하고, 검증된 Reference만 기존 `FinancialEventMapper`로 재결합한다.
+- 완료 조건/테스트: 한국어 금액·비율·기간·날짜, PII, Reflection allowlist, Vault 비노출, Draft 전체 실패, Event Mapper 재검증, Preview SAFE/BLOCKED, 원문 비노출과 인증 차단을 자동 테스트한다. 상세 계약은 `docs/PRIVACY_BOUNDARY.md`에 기록한다.
+
 - 목표: 외부 전송 가능 데이터의 명시적 허용 목록과 비식별 변환을 강제한다.
 - 주요 클래스: `PrivacyPolicy`, `AiSafeFinancialSummary`, `DataExportGuard`.
 - 완료 조건: 거래 원문·계좌번호·기관명·식별자는 AI Adapter에 도달할 수 없다.

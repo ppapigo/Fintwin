@@ -21,6 +21,8 @@
 - 시뮬레이션·목표·최적화·위험 계산 엔진은 순수 Java로 유지하고 Spring, JPA, Controller, AI SDK에 의존하지 않는다.
 - 엔티티를 API에 직접 반환하지 않고 요청/응답 DTO와 분리한다.
 - 금융 원문, 거래내역, 계좌번호, 금융기관명은 외부 AI에 보내지 않는다. AI 계층은 Repository/Entity에 직접 접근하지 않는다.
+- External AI integrations must depend only on explicit privacy-safe outbound DTOs.
+- FinancialProfile, transactions, patterns, simulation results, user identifiers, and request-scoped reference vaults must never cross the External AI Gateway boundary.
 - 비밀번호, OAuth/JWT Secret, DB 접속정보를 코드·설정·Git에 하드코딩하지 않는다. 민감정보를 로그에 남기지 않는다.
 - 새 라이브러리는 필요성과 기존 대안을 먼저 확인하며, 현재 필요 없는 인프라는 추가하지 않는다.
 - 변경 후 관련 테스트와 전체 `./gradlew test`를 실행한다.
