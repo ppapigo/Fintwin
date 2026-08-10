@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,6 +28,22 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleInvalidRequest(InvalidRequestException exception,
                                                           HttpServletRequest request) {
         return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(CsvValidationException.class)
+    ResponseEntity<ApiErrorResponse> handleCsvValidation(CsvValidationException exception,
+                                                         HttpServletRequest request) {
+        ApiErrorResponse.FieldErrorDetail detail = new ApiErrorResponse.FieldErrorDetail(
+                exception.getColumnName(), exception.getMessage(), exception.getRowNumber());
+        return response(HttpStatus.BAD_REQUEST, exception.getCode(), "CSV validation failed", request,
+                List.of(detail));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiErrorResponse> handleUploadSize(MaxUploadSizeExceededException exception,
+                                                      HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "CSV_FILE_TOO_LARGE", "CSV file exceeds the 2MB limit",
+                request, List.of(new ApiErrorResponse.FieldErrorDetail("file", "File exceeds the allowed size")));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

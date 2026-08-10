@@ -3,6 +3,11 @@ spring:
     name: fintwin
   profiles:
     default: local
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+      file-size-threshold: 2MB
   jpa:
     open-in-view: false
 

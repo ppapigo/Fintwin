@@ -5,6 +5,9 @@ import java.util.List;
 
 public record ApiErrorResponse(Instant timestamp, int status, String code, String message, String path,
                                List<FieldErrorDetail> fieldErrors) {
-    public record FieldErrorDetail(String field, String message) {
+    public record FieldErrorDetail(String field, String message, Integer rowNumber) {
+        public FieldErrorDetail(String field, String message) {
+            this(field, message, null);
+        }
     }
 }

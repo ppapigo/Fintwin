@@ -70,6 +70,12 @@
 
 ## 8. 거래 CSV 및 Pattern Engine
 
+- 상태: 완료. 인증된 `POST /api/patterns/analyze-csv`에서 최대 2 MiB·10,000행·60개월의 UTF-8 표준 CSV를 요청 메모리에서만 처리한다.
+- 구현: `TransactionCsvParser`, `NormalizedTransaction`, `FinancialPatternEngine`, `FinancialPatternAnalysisService`, `FinancialPatternController`, `FinancialPatternAnalysisResponse`.
+- 계산: 월별 cash flow, 평균·카테고리·반복거래·고정/변동지출 추정·MAD 변동성·소비 추세·적자 월·Profile 초안과 최신 버전 차이를 `BigDecimal` 결정론으로 계산한다.
+- 개인정보 경계: 거래 Entity/Repository, 원문 저장, 금융 원문 로깅, 외부 AI/API 호출 및 Profile 자동 변경을 두지 않는다.
+- 완료 조건/테스트: RFC4180·BOM·헤더·크기·행·인코딩·기간·식별자 검증, 계산 골든 케이스, 입력 순서 독립성, 최신 Profile 비교/불변성, 인증 차단을 자동 테스트한다. 상세 계약은 `docs/PATTERN_ANALYSIS_API.md`에 기록한다.
+
 - 목표: 로컬 CSV를 검증·정규화하고 소비/소득 패턴을 내부에서 추출한다.
 - 주요 클래스: `TransactionCsvParser`, `Transaction`, `CategorySummary`, `PatternEngine`.
 - 완료 조건: 원문은 내부 저장 경계를 넘지 않고 중복·오류 행 처리 정책이 있다.

@@ -4,11 +4,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +67,31 @@ class FintwinApplicationTests {
 					.contentType("application/json")
 					.content("{}"))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void patternAnalysisApiRequiresAuthentication() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "synthetic.csv", "text/csv",
+				"synthetic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+		mockMvc.perform(multipart("/api/patterns/analyze-csv").file(file))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser
+	void authenticatedUserCanAnalyzeCsvWithoutExistingProfile() throws Exception {
+		MockMultipartFile file = new MockMultipartFile("file", "synthetic.csv", "text/csv", """
+				transactionDate,type,amount,category,description
+				2026-01-01,INCOME,1000,SALARY,Synthetic Salary
+				""".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+		mockMvc.perform(multipart("/api/patterns/analyze-csv").file(file).with(csrf()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.algorithmVersion").value("fintwin-pattern-v1"))
+				.andExpect(jsonPath("$.transactionCount").value(1))
+				.andExpect(jsonPath("$.privacyNotice.externalTransfer")
+						.value("Transaction data is not sent to an external AI or external API."));
 	}
 
 }

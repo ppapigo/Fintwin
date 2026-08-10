@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -44,6 +45,11 @@ public class FinancialProfileService {
 
     public FinancialProfileResponse getCurrent(Long userId) {
         return FinancialProfileResponse.from(findCurrent(userId));
+    }
+
+    public Optional<FinancialProfileResponse> getCurrentIfPresent(Long userId) {
+        return financialProfileRepository.findFirstByUserIdOrderByVersionDesc(userId)
+                .map(FinancialProfileResponse::from);
     }
 
     public List<FinancialProfileResponse> getHistory(Long userId) {

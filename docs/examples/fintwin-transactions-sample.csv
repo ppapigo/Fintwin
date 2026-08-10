@@ -1,0 +1,38 @@
+transactionDate,type,amount,category,description,transactionId
+2026-01-25,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-001
+2026-01-26,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-002
+2026-01-27,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-003
+2026-01-28,EXPENSE,200000,FOOD,Synthetic Variable Living Cost,sample-004
+2026-01-29,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-005
+2026-01-30,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-006
+2026-02-25,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-007
+2026-02-26,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-008
+2026-02-27,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-009
+2026-02-28,EXPENSE,220000,FOOD,Synthetic Variable Living Cost,sample-010
+2026-02-28,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-011
+2026-02-28,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-012
+2026-03-25,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-013
+2026-03-26,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-014
+2026-03-27,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-015
+2026-03-28,EXPENSE,250000,FOOD,Synthetic Variable Living Cost,sample-016
+2026-03-29,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-017
+2026-03-30,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-018
+2026-04-25,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-019
+2026-04-26,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-020
+2026-04-27,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-021
+2026-04-28,EXPENSE,230000,FOOD,Synthetic Variable Living Cost,sample-022
+2026-04-29,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-023
+2026-04-30,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-024
+2026-05-25,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-025
+2026-05-26,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-026
+2026-05-27,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-027
+2026-05-28,EXPENSE,280000,FOOD,Synthetic Variable Living Cost,sample-028
+2026-05-29,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-029
+2026-05-30,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-030
+2026-06-24,INCOME,3000000,SALARY,Synthetic Monthly Salary,sample-031
+2026-06-25,EXPENSE,650000,HOUSING,Synthetic Monthly Rent,sample-032
+2026-06-26,EXPENSE,50000,UTILITIES,Synthetic Utility Bill,sample-033
+2026-06-27,EXPENSE,250000,FOOD,Synthetic Variable Living Cost,sample-034
+2026-06-28,EXPENSE,2500000,SHOPPING,Synthetic One Time Large Expense,sample-035
+2026-06-29,SAVING_TRANSFER,500000,SAVINGS,Synthetic Monthly Saving,sample-036
+2026-06-30,INVESTMENT_TRANSFER,300000,INVESTMENT,Synthetic Monthly Investment,sample-037
