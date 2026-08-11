@@ -105,8 +105,9 @@ export async function apiRequest(
 ) {
   const normalizedMethod = method.toUpperCase();
   const requestHeaders = new Headers({ Accept: "application/json", ...headers });
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
+  if (body !== undefined && !isFormData) requestHeaders.set("Content-Type", "application/json");
   if (MUTATING_METHODS.has(normalizedMethod)) {
     const csrf = await ensureCsrfToken();
     requestHeaders.set(csrf.headerName, csrf.token);
@@ -118,7 +119,7 @@ export async function apiRequest(
       method: normalizedMethod,
       credentials: "include",
       headers: requestHeaders,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : (isFormData ? body : JSON.stringify(body)),
       signal,
     });
   } catch {
@@ -133,6 +134,7 @@ export async function apiRequest(
   }
 
   if (response.status === 204) return null;
+  if (responseType === "blob") return response.blob();
   if (responseType === "text") return response.text();
   return parseJsonSafely(response);
 }

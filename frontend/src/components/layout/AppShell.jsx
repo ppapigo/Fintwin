@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   ["/what-if", "What-if"],
   ["/scenario-lab", "Scenario Lab"],
   ["/goal", "Goal"],
+  ["/patterns/import", "거래 분석"],
 ];
 
 export function AppShell() {

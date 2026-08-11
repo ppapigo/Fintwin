@@ -1,5 +1,6 @@
 package com.fintwin.fintwin;
 
+import com.fintwin.fintwin.pattern.support.XlsxFixtures;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -7,6 +8,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -133,6 +136,17 @@ class FintwinApplicationTests {
 	}
 
 	@Test
+	void xlsxPatternAnalysisRequiresAuthenticationAndCsrf() throws Exception {
+		MockMultipartFile file = validXlsxFile();
+
+		mockMvc.perform(multipart("/api/patterns/analyze-xlsx").file(file))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(multipart("/api/patterns/analyze-xlsx").file(validXlsxFile())
+					.with(fintwinUser(1L)))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void authenticatedUserCanAnalyzeCsvWithoutExistingProfile() throws Exception {
 		MockMultipartFile file = new MockMultipartFile("file", "synthetic.csv", "text/csv", """
 				transactionDate,type,amount,category,description
@@ -146,6 +160,17 @@ class FintwinApplicationTests {
 				.andExpect(jsonPath("$.transactionCount").value(1))
 				.andExpect(jsonPath("$.privacyNotice.externalTransfer")
 						.value("Transaction data is not sent to an external AI or external API."));
+	}
+
+	@Test
+	void authenticatedUserCanAnalyzeXlsxWithoutExistingProfile() throws Exception {
+		mockMvc.perform(multipart("/api/patterns/analyze-xlsx").file(validXlsxFile())
+					.with(fintwinUser(1L)).with(csrf()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.algorithmVersion").value("fintwin-pattern-v1"))
+				.andExpect(jsonPath("$.transactionCount").value(1))
+				.andExpect(jsonPath("$.privacyNotice.storage")
+						.value("The original uploaded file, normalized transactions, and analysis result are not stored in a database or file system."));
 	}
 
 	@Test
@@ -184,6 +209,13 @@ class FintwinApplicationTests {
 				  }
 				}
 				""";
+	}
+
+	private MockMultipartFile validXlsxFile() {
+		return new MockMultipartFile("file", "synthetic.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				XlsxFixtures.workbook(List.of(List.of(
+						"2026-01-01", "INCOME", "1000", "SALARY", "Synthetic Salary", "synthetic-1"))));
 	}
 
 }

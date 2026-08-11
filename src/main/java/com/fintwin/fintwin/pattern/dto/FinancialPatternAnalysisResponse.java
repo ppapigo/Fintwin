@@ -302,7 +302,7 @@ public record FinancialPatternAnalysisResponse(
         static PrivacyNoticeResponse standard() {
             return new PrivacyNoticeResponse(
                     "Uploaded transactions are used only in memory while this analysis request is processed.",
-                    "The original CSV, normalized transactions, and analysis result are not stored in a database or file system.",
+                    "The original uploaded file, normalized transactions, and analysis result are not stored in a database or file system.",
                     "Transaction data is not sent to an external AI or external API.",
                     "The financial profile is not created or changed; the user must review and explicitly apply the draft.");
         }

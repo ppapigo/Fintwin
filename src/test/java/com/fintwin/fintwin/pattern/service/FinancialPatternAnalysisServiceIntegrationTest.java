@@ -6,7 +6,9 @@ import com.fintwin.fintwin.financialprofile.dto.FinancialProfileUpdateRequest;
 import com.fintwin.fintwin.financialprofile.repository.FinancialProfileRepository;
 import com.fintwin.fintwin.financialprofile.service.FinancialProfileService;
 import com.fintwin.fintwin.global.error.CsvValidationException;
+import com.fintwin.fintwin.global.error.XlsxValidationException;
 import com.fintwin.fintwin.pattern.dto.FinancialPatternAnalysisResponse;
+import com.fintwin.fintwin.pattern.support.XlsxFixtures;
 import com.fintwin.fintwin.user.domain.User;
 import com.fintwin.fintwin.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,6 +89,22 @@ class FinancialPatternAnalysisServiceIntegrationTest {
     }
 
     @Test
+    void returnsExactlyTheSameAnalysisForEquivalentCsvAndXlsxWithoutMutatingSnapshots() {
+        Long userId = userRepository.saveAndFlush(User.create()).getId();
+        financialProfileService.create(userId, createRequest());
+        FinancialProfileResponse latest = financialProfileService.updateCurrent(userId, updateRequest());
+        long profileCountBefore = financialProfileRepository.count();
+
+        FinancialPatternAnalysisResponse csv = analysisService.analyze(userId, validCsv());
+        FinancialPatternAnalysisResponse xlsx = analysisService.analyzeXlsx(userId, validXlsx());
+
+        assertThat(xlsx).usingRecursiveComparison().isEqualTo(csv);
+        assertThat(financialProfileRepository.count()).isEqualTo(profileCountBefore);
+        assertThat(financialProfileService.getCurrent(userId).id()).isEqualTo(latest.id());
+        assertThat(financialProfileService.getHistory(userId)).hasSize(2);
+    }
+
+    @Test
     void validatesEmptyFileAndExtensionBeforeParsing() {
         MockMultipartFile empty = new MockMultipartFile("file", "synthetic.csv", "text/csv", new byte[0]);
         MockMultipartFile wrongExtension = new MockMultipartFile("file", "synthetic.txt", "text/csv",
@@ -99,9 +118,54 @@ class FinancialPatternAnalysisServiceIntegrationTest {
                         exception -> assertThat(exception.getCode()).isEqualTo("CSV_INVALID_EXTENSION"));
     }
 
+    @Test
+    void rejectsEmptyLegacyMacroAndDisguisedXlsxFiles() {
+        MockMultipartFile empty = new MockMultipartFile("file", "synthetic.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", new byte[0]);
+        MockMultipartFile legacy = new MockMultipartFile("file", "synthetic.xls",
+                "application/vnd.ms-excel", validXlsxBytes());
+        MockMultipartFile macro = new MockMultipartFile("file", "synthetic.xlsm",
+                "application/vnd.ms-excel.sheet.macroEnabled.12", validXlsxBytes());
+        MockMultipartFile disguisedCsv = new MockMultipartFile("file", "synthetic.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                validCsvText().getBytes(StandardCharsets.UTF_8));
+
+        assertXlsxCode(empty, "XLSX_EMPTY_FILE");
+        assertXlsxCode(legacy, "XLSX_INVALID_EXTENSION");
+        assertXlsxCode(macro, "XLSX_INVALID_EXTENSION");
+        assertXlsxCode(disguisedCsv, "XLSX_INVALID_WORKBOOK");
+    }
+
     private MockMultipartFile validCsv() {
         return new MockMultipartFile("file", "synthetic.csv", "application/octet-stream",
                 validCsvText().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private MockMultipartFile validXlsx() {
+        return new MockMultipartFile("file", "synthetic.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", validXlsxBytes());
+    }
+
+    private byte[] validXlsxBytes() {
+        return XlsxFixtures.workbook(List.of(
+                List.of("2026-01-01", "INCOME", "3000", "SALARY", "Synthetic Salary", "synthetic-001"),
+                List.of("2026-01-02", "EXPENSE", "1000", "HOUSING", "Synthetic Rent", "synthetic-002"),
+                List.of("2026-01-03", "SAVING_TRANSFER", "500", "SAVINGS", "Synthetic Saving", "synthetic-003"),
+                List.of("2026-01-04", "INVESTMENT_TRANSFER", "300", "INVESTMENT", "Synthetic Investment", "synthetic-004"),
+                List.of("2026-02-01", "INCOME", "3000", "SALARY", "Synthetic Salary", "synthetic-005"),
+                List.of("2026-02-02", "EXPENSE", "1000", "HOUSING", "Synthetic Rent", "synthetic-006"),
+                List.of("2026-02-03", "SAVING_TRANSFER", "500", "SAVINGS", "Synthetic Saving", "synthetic-007"),
+                List.of("2026-02-04", "INVESTMENT_TRANSFER", "300", "INVESTMENT", "Synthetic Investment", "synthetic-008"),
+                List.of("2026-03-01", "INCOME", "3000", "SALARY", "Synthetic Salary", "synthetic-009"),
+                List.of("2026-03-02", "EXPENSE", "1000", "HOUSING", "Synthetic Rent", "synthetic-010"),
+                List.of("2026-03-03", "SAVING_TRANSFER", "500", "SAVINGS", "Synthetic Saving", "synthetic-011"),
+                List.of("2026-03-04", "INVESTMENT_TRANSFER", "300", "INVESTMENT", "Synthetic Investment", "synthetic-012")));
+    }
+
+    private void assertXlsxCode(MockMultipartFile file, String code) {
+        assertThatThrownBy(() -> analysisService.analyzeXlsx(1L, file))
+                .isInstanceOfSatisfying(XlsxValidationException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo(code));
     }
 
     private String validCsvText() {

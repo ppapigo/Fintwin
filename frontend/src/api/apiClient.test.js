@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { apiRequest } from "./apiClient";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiRequest, clearCsrfToken } from "./apiClient";
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -9,6 +9,8 @@ function jsonResponse(body, status = 200) {
 }
 
 describe("apiRequest", () => {
+  beforeEach(() => clearCsrfToken());
+
   it("sends cookies on a GET without adding CSRF", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ authenticated: true, provider: "google" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -37,6 +39,23 @@ describe("apiRequest", () => {
     expect(mutation.credentials).toBe("include");
     expect(mutation.headers.get("X-XSRF-TOKEN")).toBe("memory-only");
     expect(mutation.body).toBe('{"value":"10.00"}');
+  });
+
+  it("sends FormData unchanged and lets the browser create the multipart boundary", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: "X-XSRF-TOKEN", parameterName: "_csrf", token: "memory-only" }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const body = new FormData();
+    body.append("file", new File(["synthetic"], "synthetic.xlsx"));
+
+    await apiRequest("/api/patterns/analyze-xlsx", { method: "POST", body });
+
+    const [, mutation] = fetchMock.mock.calls[1];
+    expect(mutation.body).toBe(body);
+    expect(mutation.headers.get("Content-Type")).toBeNull();
+    expect(mutation.headers.get("X-XSRF-TOKEN")).toBe("memory-only");
   });
 
   it("does not automatically retry a failed mutation and refreshes only on the next user request", async () => {

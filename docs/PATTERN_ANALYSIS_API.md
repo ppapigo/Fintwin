@@ -2,10 +2,11 @@
 
 ## 개요와 개인정보 처리 흐름
 
-`POST /api/patterns/analyze-csv`는 인증된 사용자가 업로드한 FinTwin 표준 CSV를 요청 처리 중 메모리에서만 정규화하고, 결정론적 규칙으로 월별 금융 패턴과 Financial Profile 초안을 계산한다.
+`POST /api/patterns/analyze-csv`와 `POST /api/patterns/analyze-xlsx`는 인증된 사용자가 업로드한 FinTwin 표준 거래내역을 요청 처리 중 메모리에서만 정규화하고, 결정론적 규칙으로 월별 금융 패턴과 Financial Profile 초안을 계산한다.
 
 ```text
-multipart stream -> 보안 검증 -> CSV parser -> NormalizedTransaction
+multipart stream -> 형식별 보안 검증 -> CSV/XLSX parser
+                 -> 공통 TransactionRecordNormalizer -> NormalizedTransaction
                  -> 순수 Java Pattern Engine -> 집계 응답과 Profile 초안
 ```
 
@@ -13,7 +14,8 @@ multipart stream -> 보안 검증 -> CSV parser -> NormalizedTransaction
 - 외부 AI, 외부 LLM 또는 외부 API를 호출하지 않는다.
 - 거래 원문 목록은 응답하지 않는다. 반복거래 확인용 `displayDescription`만 현재 응답에서 제공하며 저장하지 않는다.
 - 분석 API는 Financial Profile을 생성하거나 수정하지 않는다. 사용자가 초안을 확인한 뒤 기존 Profile API를 명시적으로 호출해야 한다.
-- 현재 구현은 은행별 원본 CSV를 직접 인식하지 않는다. 사용자가 아래 표준 CSV로 변환해야 한다.
+- 현재 구현은 은행별 원본 CSV/XLSX를 직접 인식하지 않는다. 사용자가 아래 FinTwin 표준 형식으로 변환해야 한다.
+- 형식별 위험과 오류 코드가 크게 달라 `TransactionFileParser` 공통 인터페이스는 아직 도입하지 않았다. 두 Parser가 공통 `TransactionRecordNormalizer`를 사용하고 이후 Engine과 Profile Draft 흐름을 완전히 공유한다.
 
 ## 요청
 
@@ -61,6 +63,34 @@ transactionDate,type,amount,category,description,transactionId
 `SALARY`, `SIDE_INCOME`, `HOUSING`, `UTILITIES`, `FOOD`, `TRANSPORTATION`, `HEALTHCARE`, `EDUCATION`, `ENTERTAINMENT`, `SHOPPING`, `INSURANCE`, `DEBT`, `SAVINGS`, `INVESTMENT`, `OTHER`, `UNCATEGORIZED`
 
 지원하지 않는 값은 자동 치환하지 않고 400 오류로 거절한다. 모든 금액은 양수 `BigDecimal`이며 방향은 `type`으로 표현한다.
+
+## XLSX 요청과 형식
+
+```http
+POST /api/patterns/analyze-xlsx
+Content-Type: multipart/form-data
+X-CSRF-TOKEN: <현재 세션의 CSRF token>
+
+file=<FinTwin 표준 .xlsx>
+```
+
+- 확장자는 정확히 `.xlsx`여야 하며 `.xls`, `.xlsm`, 확장자를 위장한 CSV/ZIP은 거절한다.
+- Workbook에는 보이는 `transactions` 시트 하나만 있어야 한다.
+- Header와 거래 유형·Category·날짜·금액·중복 ID 검증은 CSV와 동일하다.
+- 날짜와 식별용 셀은 텍스트여야 한다. `amount`만 텍스트 또는 OOXML에 저장된 원시 십진 숫자를 허용하며 `double`로 변환하지 않는다.
+- 제한된 빈 행은 허용하지만 값이 일부만 있는 행의 오류를 건너뛰지 않는다.
+
+빈 표준 양식은 인증 후 `GET /api/patterns/xlsx-template`에서 받을 수 있다. 6개월 합성 데이터 문서 예제는 [fintwin-transactions-sample.xlsx](examples/fintwin-transactions-sample.xlsx)다.
+
+### XLSX 보안 검증
+
+- 업로드 선언 크기와 실제 읽은 크기를 각각 2 MiB로 제한한다.
+- `FileMagic`과 OOXML ZIP의 필수 Part를 확인한다.
+- ZIP Entry 수, Entry별/전체 압축 해제 크기, 압축 비율, 경로 이탈을 제한해 ZIP Bomb을 차단한다.
+- VBA/매크로 Part, 암호화 Workbook, 수식 셀, Hyperlink와 외부 Relationship을 거절한다.
+- Drawing, Comment, Media, ActiveX, Embedded OLE, Custom XML을 거절한다.
+- 숨긴 시트·행·열, 병합 셀, 과도한 Sheet·Row·Cell·빈 행·문자열을 거절한다.
+- Parser 예외 원문, 파일명, 셀 값, 거래 설명은 API 오류 응답이나 로그로 전달하지 않는다.
 
 ## 보안 제한
 
@@ -163,13 +193,13 @@ Profile이 없으면 `currentProfileComparison`은 `null`이고 추론하지 못
   "deficitMonths": ["2026-06"],
   "currentProfileComparison": null,
   "privacyNotice": {
-    "storage": "The original CSV, normalized transactions, and analysis result are not stored in a database or file system.",
+    "storage": "The original uploaded file, normalized transactions, and analysis result are not stored in a database or file system.",
     "externalTransfer": "Transaction data is not sent to an external AI or external API."
   }
 }
 ```
 
-위 숫자는 [샘플 CSV](examples/fintwin-transactions-sample.csv)의 주요 집계값이다. 생략된 응답 필드는 실제 API에서 함께 반환된다.
+위 숫자는 [샘플 CSV](examples/fintwin-transactions-sample.csv)의 주요 집계값이다. 동일한 거래의 CSV/XLSX는 `NormalizedTransaction`, 월별 집계, 평균, 반복 지출, Category 비율, Profile Draft, Warning과 현재 Profile 차이가 모두 같아야 한다. 생략된 응답 필드는 실제 API에서 함께 반환된다.
 
 ## 경고 코드
 
@@ -185,3 +215,37 @@ Profile이 없으면 `currentProfileComparison`은 `null`이고 추론하지 못
 - `PROFILE_REVIEW_REQUIRED`
 
 정량 임계값은 `FinancialPatternRules` 한 곳에서 관리하고 응답의 `analysisRules`에 공개한다. 경고는 금융 보장이나 조언이 아니라 사용자가 결과를 검토해야 한다는 규칙 기반 신호다.
+
+## React 사용자 흐름과 승인 경계
+
+인증 사용자는 `/patterns/import`에서 CSV/XLSX를 선택하거나 Drag & Drop한다. Frontend는 확장자와 2 MiB 제한을 먼저 확인하고 기존 공통 API Client의 HttpSession·CSRF 흐름으로 한 번만 전송한다.
+
+```text
+파일 선택 -> 메모리 분석 -> 월별/Category/반복/Warning 확인
+         -> 현재 Profile과 Draft 비교 -> 반영 필드 선택
+         -> FinancialProfileForm 최종 검토 -> PUT /api/financial-profiles/current
+         -> 새 불변 Snapshot 생성
+```
+
+- 분석 응답의 `financialProfileId`는 API 정규화 단계에서 제거하고 Version만 표시한다.
+- 금액은 응답 JSON을 정밀도 안전하게 읽어 문자열로 유지하며 Frontend에서 Pattern 계산이나 Draft 값을 재계산하지 않는다.
+- 분석만으로 Profile을 만들거나 수정하지 않는다. 사용자가 선택한 필드만 현재 Profile에 합성하고 전체 수정 폼을 통과한 뒤 기존 PUT API를 호출한다.
+- 파일과 분석 결과는 `localStorage`, `sessionStorage`, URL, Router state에 넣지 않는다.
+- 원본 파일명과 거래 설명을 Console에 출력하지 않는다.
+- 응답에 포함된 반복 거래는 화면에서 거래 설명 대신 Type과 Category 중심으로 표시한다.
+
+## 한계와 면책
+
+- 은행별 XLSX 자동 인식, `.xls`/`.xlsm`, 여러 시트, 수식 기반 Workbook은 지원하지 않는다.
+- Pattern은 업로드 기간의 규칙 기반 관측 결과이며 미래 소득·소비나 금융 성과를 보장하지 않는다.
+- Category와 거래 유형이 잘못 분류되면 Draft도 달라질 수 있으므로 저장 전 사용자 확인이 필요하다.
+- 분석은 생성형 AI가 아니라 결정론적 Java Engine이 수행하며 금융상품 추천이나 투자 자문이 아니다.
+
+## 로컬 검증 기록 (2026-08-11)
+
+- 문서 샘플은 기존 CSV와 동일한 Header 1행과 6개월 합성 거래 37행이며 수식이 없다. 생성 후 표 범위와 수식 Scan을 검사하고 렌더링을 확인했으며 실제 `TransactionXlsxParser`로 다시 읽었다.
+- 동일 합성 거래의 CSV/XLSX에 대해 `NormalizedTransaction`과 전체 `FinancialPatternAnalysisResponse`를 재귀 비교한다.
+- 분석 전후 Profile Repository 개수, 최신 Snapshot ID와 History 개수가 바뀌지 않음을 통합 테스트로 검증한다.
+- React 테스트는 파일명 미표시, Storage 미사용, 중복 제출 차단, 내부 Profile ID 제거, Backend 금액 문자열 유지, Warning 매핑, 선택 필드만 PUT에 반영하는 흐름을 검증한다.
+- 실제 Kakao 인증 세션에서 합성 Profile v1을 만든 뒤 37개 거래 XLSX를 업로드했다. 분석 직후 Snapshot은 v1로 유지됐고, 월 고정지출 한 필드만 선택·승인한 뒤 v2가 생성되며 나머지 Profile 값과 v1 이력이 보존됨을 확인했다.
+- 새로고침 뒤 파일과 분석 결과가 화면에 남지 않았고 Browser Console warning/error는 0건이었다. 1440px Desktop과 390px Mobile을 확인했으며, 결과 표는 Page가 아니라 내부 Wrapper에서만 가로 Scroll된다.

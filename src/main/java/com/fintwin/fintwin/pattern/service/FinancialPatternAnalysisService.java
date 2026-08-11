@@ -3,12 +3,14 @@ package com.fintwin.fintwin.pattern.service;
 import com.fintwin.fintwin.financialprofile.dto.FinancialProfileResponse;
 import com.fintwin.fintwin.financialprofile.service.FinancialProfileService;
 import com.fintwin.fintwin.global.error.CsvValidationException;
+import com.fintwin.fintwin.global.error.XlsxValidationException;
 import com.fintwin.fintwin.pattern.domain.FinancialPatternReport;
 import com.fintwin.fintwin.pattern.domain.FinancialPatternRules;
 import com.fintwin.fintwin.pattern.domain.NormalizedTransaction;
 import com.fintwin.fintwin.pattern.dto.FinancialPatternAnalysisResponse;
 import com.fintwin.fintwin.pattern.engine.FinancialPatternEngine;
 import com.fintwin.fintwin.pattern.parser.TransactionCsvParser;
+import com.fintwin.fintwin.pattern.parser.TransactionXlsxParser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,17 +26,20 @@ import java.util.List;
 public class FinancialPatternAnalysisService {
     private final FinancialProfileService financialProfileService;
     private final TransactionCsvParser csvParser;
+    private final TransactionXlsxParser xlsxParser;
     private final FinancialPatternEngine patternEngine;
     private final FinancialPatternRules rules;
     private final Clock clock;
 
     public FinancialPatternAnalysisService(FinancialProfileService financialProfileService,
                                            TransactionCsvParser csvParser,
+                                           TransactionXlsxParser xlsxParser,
                                            FinancialPatternEngine patternEngine,
                                            FinancialPatternRules rules,
                                            Clock clock) {
         this.financialProfileService = financialProfileService;
         this.csvParser = csvParser;
+        this.xlsxParser = xlsxParser;
         this.patternEngine = patternEngine;
         this.rules = rules;
         this.clock = clock;
@@ -44,16 +49,35 @@ public class FinancialPatternAnalysisService {
         validateFile(file);
         try (InputStream input = file.getInputStream()) {
             List<NormalizedTransaction> transactions = csvParser.parse(input, file.getSize(), LocalDate.now(clock));
-            FinancialPatternReport report = patternEngine.analyze(transactions);
-            FinancialProfileResponse currentProfile = financialProfileService.getCurrentIfPresent(userId)
-                    .orElse(null);
-            return FinancialPatternAnalysisResponse.from(report, currentProfile);
+            return analyzeTransactions(userId, transactions);
         } catch (CsvValidationException exception) {
             throw exception;
         } catch (IOException exception) {
             throw new CsvValidationException("CSV_READ_FAILED", null, "file",
                     "CSV file could not be read");
         }
+    }
+
+    public FinancialPatternAnalysisResponse analyzeXlsx(Long userId, MultipartFile file) {
+        validateXlsxFile(file);
+        try (InputStream input = file.getInputStream()) {
+            List<NormalizedTransaction> transactions = xlsxParser.parse(
+                    input, file.getSize(), LocalDate.now(clock));
+            return analyzeTransactions(userId, transactions);
+        } catch (XlsxValidationException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new XlsxValidationException("XLSX_READ_FAILED", null, "file",
+                    "XLSX file could not be read");
+        }
+    }
+
+    private FinancialPatternAnalysisResponse analyzeTransactions(Long userId,
+                                                                 List<NormalizedTransaction> transactions) {
+        FinancialPatternReport report = patternEngine.analyze(transactions);
+        FinancialProfileResponse currentProfile = financialProfileService.getCurrentIfPresent(userId)
+                .orElse(null);
+        return FinancialPatternAnalysisResponse.from(report, currentProfile);
     }
 
     private void validateFile(MultipartFile file) {
@@ -68,6 +92,22 @@ public class FinancialPatternAnalysisService {
         if (filename == null || !filename.toLowerCase(java.util.Locale.ROOT).endsWith(".csv")) {
             throw new CsvValidationException("CSV_INVALID_EXTENSION", null, "file",
                     "Only .csv files are supported");
+        }
+    }
+
+    private void validateXlsxFile(MultipartFile file) {
+        if (file == null || file.isEmpty() || file.getSize() == 0) {
+            throw new XlsxValidationException("XLSX_EMPTY_FILE", null, "file",
+                    "XLSX file must not be empty");
+        }
+        if (file.getSize() > rules.maximumFileBytes()) {
+            throw new XlsxValidationException("XLSX_FILE_TOO_LARGE", null, "file",
+                    "XLSX file exceeds the 2MB limit");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx")) {
+            throw new XlsxValidationException("XLSX_INVALID_EXTENSION", null, "file",
+                    "Only .xlsx files are supported");
         }
     }
 }

@@ -14,6 +14,10 @@ const FinancialTwinPage = lazy(() => import("./pages/FinancialTwinPage")
   .then((module) => ({ default: module.FinancialTwinPage })));
 const WhatIfPage = lazy(() => import("./pages/WhatIfPage")
   .then((module) => ({ default: module.WhatIfPage })));
+const GoalPage = lazy(() => import("./pages/GoalPage")
+  .then((module) => ({ default: module.GoalPage })));
+const PatternAnalysisPage = lazy(() => import("./pages/PatternAnalysisPage")
+  .then((module) => ({ default: module.PatternAnalysisPage })));
 
 export default function App() {
   return (
@@ -28,7 +32,8 @@ export default function App() {
           <Route path="/twin" element={<Suspense fallback={<LoadingScreen label="My Financial Twin을 준비하고 있습니다." />}><FinancialTwinPage /></Suspense>} />
           <Route path="/what-if" element={<Suspense fallback={<LoadingScreen label="Privacy-first What-if를 준비하고 있습니다." />}><WhatIfPage /></Suspense>} />
           <Route path="/scenario-lab" element={<PlaceholderPage eyebrow="SCENARIO LAB" title="기준안과 대안을 나란히" description="같은 가정과 기간에서 시나리오 A/B를 비교합니다." />} />
-          <Route path="/goal" element={<PlaceholderPage eyebrow="GOAL SOLVER" title="목표에서 현재로 역산" description="목표 금액과 기간을 만족하기 위한 월별 조건을 계산합니다." />} />
+          <Route path="/goal" element={<Suspense fallback={<LoadingScreen label="Goal Reverse Simulation을 준비하고 있습니다." />}><GoalPage /></Suspense>} />
+          <Route path="/patterns/import" element={<Suspense fallback={<LoadingScreen label="거래 패턴 분석 화면을 준비하고 있습니다." />}><PatternAnalysisPage /></Suspense>} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

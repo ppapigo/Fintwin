@@ -3,8 +3,6 @@ package com.fintwin.fintwin.pattern.parser;
 import com.fintwin.fintwin.global.error.CsvValidationException;
 import com.fintwin.fintwin.pattern.domain.FinancialPatternRules;
 import com.fintwin.fintwin.pattern.domain.NormalizedTransaction;
-import com.fintwin.fintwin.pattern.domain.TransactionCategory;
-import com.fintwin.fintwin.pattern.domain.TransactionType;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -16,44 +14,28 @@ import java.io.InputStreamReader;
 import java.io.PushbackInputStream;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 public final class TransactionCsvParser {
-    private static final String TRANSACTION_DATE = "transactionDate";
-    private static final String TYPE = "type";
-    private static final String AMOUNT = "amount";
-    private static final String CATEGORY = "category";
-    private static final String DESCRIPTION = "description";
-    private static final String TRANSACTION_ID = "transactionId";
-    private static final Set<String> REQUIRED_HEADERS = Set.of(
-            TRANSACTION_DATE, TYPE, AMOUNT, CATEGORY, DESCRIPTION);
-    private static final Set<String> ALLOWED_HEADERS = Set.of(
-            TRANSACTION_DATE, TYPE, AMOUNT, CATEGORY, DESCRIPTION, TRANSACTION_ID);
-    private static final Set<String> DIRECT_IDENTIFIER_HEADERS = Set.of(
-            "accountnumber", "residentregistrationnumber", "cardnumber", "phonenumber", "email", "name");
-
     private final FinancialPatternRules rules;
+    private final TransactionRecordNormalizer recordNormalizer;
 
     public TransactionCsvParser(FinancialPatternRules rules) {
         this.rules = Objects.requireNonNull(rules);
+        this.recordNormalizer = new TransactionRecordNormalizer(rules);
     }
 
     public List<NormalizedTransaction> parse(InputStream input, long declaredSize, LocalDate today) {
@@ -93,7 +75,7 @@ public final class TransactionCsvParser {
         }
         CSVRecord headerRecord = records.next();
         List<String> headers = values(headerRecord);
-        Map<String, Integer> headerIndexes = validateHeaders(headers);
+        Map<String, Integer> headerIndexes = recordNormalizer.validateHeaders(headers, "CSV_", this::error);
         Set<String> transactionIds = new HashSet<>();
         List<NormalizedTransaction> transactions = new ArrayList<>();
         YearMonth earliest = null;
@@ -110,14 +92,19 @@ public final class TransactionCsvParser {
                 throw error("CSV_TOO_MANY_ROWS", rowNumber, "row",
                         "CSV contains more than 10000 transaction rows");
             }
-            NormalizedTransaction transaction = parseRecord(record, headerIndexes, transactionIds,
-                    rowNumber, today);
+            Map<String, String> fields = new HashMap<>();
+            for (Map.Entry<String, Integer> header : headerIndexes.entrySet()) {
+                fields.put(header.getKey(), record.get(header.getValue()));
+            }
+            NormalizedTransaction transaction = recordNormalizer.normalize(fields, transactionIds,
+                    rowNumber, today, "CSV_", this::error);
             transactions.add(transaction);
             YearMonth month = YearMonth.from(transaction.transactionDate());
             earliest = earliest == null || month.isBefore(earliest) ? month : earliest;
             latest = latest == null || month.isAfter(latest) ? month : latest;
             if (ChronoUnit.MONTHS.between(earliest, latest) + 1L > rules.maximumAnalysisMonths()) {
-                throw error("CSV_ANALYSIS_PERIOD_TOO_LONG", rowNumber, TRANSACTION_DATE,
+                throw error("CSV_ANALYSIS_PERIOD_TOO_LONG", rowNumber,
+                        TransactionRecordNormalizer.TRANSACTION_DATE,
                         "CSV analysis period exceeds 60 months");
             }
         }
@@ -127,130 +114,12 @@ public final class TransactionCsvParser {
         return List.copyOf(transactions);
     }
 
-    private Map<String, Integer> validateHeaders(List<String> headers) {
-        Map<String, Integer> indexes = new LinkedHashMap<>();
-        for (int index = 0; index < headers.size(); index++) {
-            String header = headers.get(index);
-            if (containsControlCharacter(header)) {
-                throw error("CSV_CONTROL_CHARACTER", 1, "header", "CSV header contains a control character");
-            }
-            String lowerHeader = header.toLowerCase(Locale.ROOT);
-            if (DIRECT_IDENTIFIER_HEADERS.contains(lowerHeader)) {
-                throw error("CSV_DIRECT_IDENTIFIER_HEADER", 1, "header",
-                        "Direct identifier headers are not allowed");
-            }
-            if (!ALLOWED_HEADERS.contains(header)) {
-                throw error("CSV_UNKNOWN_HEADER", 1, "header", "CSV contains an unknown header");
-            }
-            if (indexes.putIfAbsent(header, index) != null) {
-                throw error("CSV_DUPLICATE_HEADER", 1, header, "CSV contains a duplicate header");
-            }
-        }
-        for (String required : REQUIRED_HEADERS) {
-            if (!indexes.containsKey(required)) {
-                throw error("CSV_REQUIRED_HEADER_MISSING", 1, required,
-                        "CSV is missing a required header");
-            }
-        }
-        return indexes;
-    }
-
-    private NormalizedTransaction parseRecord(CSVRecord record, Map<String, Integer> indexes,
-                                              Set<String> transactionIds, int rowNumber, LocalDate today) {
-        Map<String, String> fields = new HashMap<>();
-        for (Map.Entry<String, Integer> header : indexes.entrySet()) {
-            String value = record.get(header.getValue());
-            if (containsControlCharacter(value)) {
-                throw error("CSV_CONTROL_CHARACTER", rowNumber, header.getKey(),
-                        "CSV field contains a control character");
-            }
-            fields.put(header.getKey(), value);
-        }
-
-        LocalDate date = parseDate(fields.get(TRANSACTION_DATE), rowNumber, today);
-        TransactionType type = parseType(fields.get(TYPE), rowNumber);
-        BigDecimal amount = parseAmount(fields.get(AMOUNT), rowNumber);
-        TransactionCategory category = parseCategory(fields.get(CATEGORY), rowNumber);
-        String description = fields.get(DESCRIPTION).strip();
-        if (description.codePointCount(0, description.length()) > 100) {
-            throw error("CSV_DESCRIPTION_TOO_LONG", rowNumber, DESCRIPTION,
-                    "Description must be at most 100 characters");
-        }
-        String transactionId = indexes.containsKey(TRANSACTION_ID)
-                ? normalizeTransactionId(fields.get(TRANSACTION_ID), transactionIds, rowNumber) : null;
-        return new NormalizedTransaction(date, type, amount, category, description, transactionId);
-    }
-
-    private LocalDate parseDate(String raw, int rowNumber, LocalDate today) {
-        try {
-            LocalDate date = LocalDate.parse(raw.strip());
-            if (date.isAfter(today)) {
-                throw error("CSV_FUTURE_DATE", rowNumber, TRANSACTION_DATE,
-                        "Future transaction dates are not allowed");
-            }
-            return date;
-        } catch (DateTimeParseException exception) {
-            throw error("CSV_INVALID_DATE", rowNumber, TRANSACTION_DATE,
-                    "Transaction date must use yyyy-MM-dd format");
-        }
-    }
-
-    private TransactionType parseType(String raw, int rowNumber) {
-        try {
-            return TransactionType.valueOf(raw.strip().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            throw error("CSV_INVALID_TYPE", rowNumber, TYPE, "Transaction type is not supported");
-        }
-    }
-
-    private TransactionCategory parseCategory(String raw, int rowNumber) {
-        try {
-            return TransactionCategory.valueOf(raw.strip().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            throw error("CSV_INVALID_CATEGORY", rowNumber, CATEGORY,
-                    "Transaction category is not supported");
-        }
-    }
-
-    private BigDecimal parseAmount(String raw, int rowNumber) {
-        try {
-            BigDecimal amount = new BigDecimal(raw.strip());
-            if (amount.signum() <= 0) {
-                throw error("CSV_NON_POSITIVE_AMOUNT", rowNumber, AMOUNT,
-                        "Transaction amount must be greater than zero");
-            }
-            return amount.setScale(rules.moneyScale(), RoundingMode.HALF_UP);
-        } catch (NumberFormatException exception) {
-            throw error("CSV_INVALID_AMOUNT", rowNumber, AMOUNT, "Transaction amount must be a decimal number");
-        }
-    }
-
-    private String normalizeTransactionId(String raw, Set<String> transactionIds, int rowNumber) {
-        String transactionId = raw.strip();
-        if (transactionId.isEmpty()) {
-            return null;
-        }
-        if (transactionId.codePointCount(0, transactionId.length()) > 100) {
-            throw error("CSV_TRANSACTION_ID_TOO_LONG", rowNumber, TRANSACTION_ID,
-                    "Transaction ID must be at most 100 characters");
-        }
-        if (!transactionIds.add(transactionId)) {
-            throw error("CSV_DUPLICATE_TRANSACTION_ID", rowNumber, TRANSACTION_ID,
-                    "Transaction ID must be unique within the file");
-        }
-        return transactionId;
-    }
-
     private List<String> values(CSVRecord record) {
         List<String> values = new ArrayList<>(record.size());
         for (int index = 0; index < record.size(); index++) {
             values.add(record.get(index));
         }
         return values;
-    }
-
-    private boolean containsControlCharacter(String value) {
-        return value.codePoints().anyMatch(Character::isISOControl);
     }
 
     private PushbackInputStream removeUtf8Bom(InputStream input) throws IOException {

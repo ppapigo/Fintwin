@@ -1,26 +1,13 @@
 package com.fintwin.fintwin.global.error;
 
-public class CsvValidationException extends RuntimeException {
-    private final String code;
-    private final Integer rowNumber;
-    private final String columnName;
+public class CsvValidationException extends TransactionFileValidationException {
 
     public CsvValidationException(String code, Integer rowNumber, String columnName, String message) {
-        super(message);
-        this.code = code;
-        this.rowNumber = rowNumber;
-        this.columnName = columnName;
+        super(code, rowNumber, columnName, message);
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public Integer getRowNumber() {
-        return rowNumber;
-    }
-
-    public String getColumnName() {
-        return columnName;
+    @Override
+    public String safeSummary() {
+        return "CSV validation failed";
     }
 }

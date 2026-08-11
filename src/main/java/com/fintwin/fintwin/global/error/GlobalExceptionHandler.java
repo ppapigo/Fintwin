@@ -44,19 +44,21 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage(), request, List.of());
     }
 
-    @ExceptionHandler(CsvValidationException.class)
-    ResponseEntity<ApiErrorResponse> handleCsvValidation(CsvValidationException exception,
-                                                         HttpServletRequest request) {
+    @ExceptionHandler(TransactionFileValidationException.class)
+    ResponseEntity<ApiErrorResponse> handleTransactionFileValidation(TransactionFileValidationException exception,
+                                                                     HttpServletRequest request) {
         ApiErrorResponse.FieldErrorDetail detail = new ApiErrorResponse.FieldErrorDetail(
                 exception.getColumnName(), exception.getMessage(), exception.getRowNumber());
-        return response(HttpStatus.BAD_REQUEST, exception.getCode(), "CSV validation failed", request,
+        return response(HttpStatus.BAD_REQUEST, exception.getCode(), exception.safeSummary(), request,
                 List.of(detail));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ApiErrorResponse> handleUploadSize(MaxUploadSizeExceededException exception,
                                                       HttpServletRequest request) {
-        return response(HttpStatus.BAD_REQUEST, "CSV_FILE_TOO_LARGE", "CSV file exceeds the 2MB limit",
+        boolean xlsx = request.getRequestURI().endsWith("/analyze-xlsx");
+        return response(HttpStatus.BAD_REQUEST, xlsx ? "XLSX_FILE_TOO_LARGE" : "CSV_FILE_TOO_LARGE",
+                xlsx ? "XLSX file exceeds the 2MB limit" : "CSV file exceeds the 2MB limit",
                 request, List.of(new ApiErrorResponse.FieldErrorDetail("file", "File exceeds the allowed size")));
     }
 
