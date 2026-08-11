@@ -74,6 +74,48 @@ class ScenarioSimulationControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
+    @Test
+    void acceptsMultiScenarioRequestUsingOnlyTheCurrentPrincipal() throws Exception {
+        mockMvc.perform(post("/api/simulations/compare-multiple")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validMultiJson()))
+                .andExpect(status().isOk());
+
+        verify(scenarioSimulationService).compareMultiple(eq(7L), any());
+    }
+
+    @Test
+    void rejectsDuplicateScenarioKeysAndMoreThanFourScenarios() throws Exception {
+        String duplicate = validMultiJson().replace("\"scenarioKey\": \"C\"", "\"scenarioKey\": \"B\"");
+        mockMvc.perform(post("/api/simulations/compare-multiple")
+                        .contentType(MediaType.APPLICATION_JSON).content(duplicate))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        String five = multiJson("B", "C", "D", "E", "F");
+        mockMvc.perform(post("/api/simulations/compare-multiple")
+                        .contentType(MediaType.APPLICATION_JSON).content(five))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void rejectsControlCharactersAndInternalIdentifierOrToolFields() throws Exception {
+        mockMvc.perform(post("/api/simulations/compare-multiple")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validMultiJson().replace("first choice", "first\\nchoice")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        for (String forbidden : new String[]{"userId", "profileId", "toolName"}) {
+            String json = validMultiJson().replaceFirst("\\{", "{\\n\\\"" + forbidden + "\\\": 99,");
+            mockMvc.perform(post("/api/simulations/compare-multiple")
+                            .contentType(MediaType.APPLICATION_JSON).content(json))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        }
+    }
+
     private String validJson() {
         return """
                 {
@@ -102,5 +144,38 @@ class ScenarioSimulationControllerTest {
                   "description": "purchase"
                 }
                 """;
+    }
+
+    private String validMultiJson() {
+        return multiJson("B", "C");
+    }
+
+    private String multiJson(String... scenarioKeys) {
+        String scenarios = java.util.Arrays.stream(scenarioKeys)
+                .map(this::scenarioJson).collect(java.util.stream.Collectors.joining(","));
+        return """
+                {
+                  "startYearMonth": "2026-08",
+                  "horizonMonths": 12,
+                  "assumptions": {
+                    "annualIncomeGrowthRate": "0",
+                    "annualInflationRate": "0",
+                    "annualDepositInterestRate": "0",
+                    "annualInvestmentReturnRate": "0",
+                    "monthlyDebtPayment": "0"
+                  },
+                  "scenarios": [%s]
+                }
+                """.formatted(scenarios);
+    }
+
+    private String scenarioJson(String key) {
+        return """
+                {
+                  "scenarioKey": "%s",
+                  "label": "%s choice",
+                  "events": []
+                }
+                """.formatted(key, key.equals("B") ? "first" : key);
     }
 }

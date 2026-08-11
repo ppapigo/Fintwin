@@ -1,6 +1,8 @@
 package com.fintwin.fintwin.scenario.controller;
 
 import com.fintwin.fintwin.auth.CurrentUserIdProvider;
+import com.fintwin.fintwin.scenario.dto.MultiScenarioComparisonRequest;
+import com.fintwin.fintwin.scenario.dto.MultiScenarioComparisonResponse;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonRequest;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonResponse;
 import com.fintwin.fintwin.scenario.service.ScenarioSimulationService;
@@ -25,5 +27,11 @@ public class ScenarioSimulationController {
     @PostMapping("/compare")
     public ScenarioComparisonResponse compare(@Valid @RequestBody ScenarioComparisonRequest request) {
         return scenarioSimulationService.compare(currentUserIdProvider.currentUserId(), request);
+    }
+
+    @PostMapping("/compare-multiple")
+    public MultiScenarioComparisonResponse compareMultiple(
+            @Valid @RequestBody MultiScenarioComparisonRequest request) {
+        return scenarioSimulationService.compareMultiple(currentUserIdProvider.currentUserId(), request);
     }
 }

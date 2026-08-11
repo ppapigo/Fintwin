@@ -24,9 +24,21 @@ public class FinancialEventMapper {
 
     public ScenarioDefinition map(String scenarioName, List<FinancialEventRequest> requests,
                                   YearMonth simulationStart, int horizonMonths) {
+        return map(scenarioName, requests, simulationStart, horizonMonths, false);
+    }
+
+    public ScenarioDefinition mapAllowingEmpty(String scenarioName, List<FinancialEventRequest> requests,
+                                               YearMonth simulationStart, int horizonMonths) {
+        return map(scenarioName, requests, simulationStart, horizonMonths, true);
+    }
+
+    private ScenarioDefinition map(String scenarioName, List<FinancialEventRequest> requests,
+                                   YearMonth simulationStart, int horizonMonths, boolean allowEmpty) {
         requireText(scenarioName, "scenarioName", MAX_SCENARIO_NAME_LENGTH);
-        if (requests == null || requests.isEmpty() || requests.size() > 20) {
-            throw new InvalidRequestException("events must contain between 1 and 20 items");
+        if (requests == null || (!allowEmpty && requests.isEmpty()) || requests.size() > 20) {
+            throw new InvalidRequestException(allowEmpty
+                    ? "events must contain at most 20 items"
+                    : "events must contain between 1 and 20 items");
         }
         YearMonth simulationEnd = simulationStart.plusMonths(horizonMonths - 1L);
         Set<String> eventIds = new HashSet<>();

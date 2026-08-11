@@ -56,6 +56,13 @@ class FinancialEventMapperTest {
     }
 
     @Test
+    void scenarioLabVariantAllowsAnEmptyEventListWithoutChangingSingleCompareRules() {
+        assertThat(mapper.mapAllowingEmpty("same as baseline", List.of(), START, 12).events()).isEmpty();
+        assertThatThrownBy(() -> mapper.map("single compare", List.of(), START, 12))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
     void rejectsInvalidAndCompletelyOutsidePeriods() {
         FinancialEventRequest reversed = period("reversed", "INCOME_PAUSE", START.plusMonths(2), START, null);
         FinancialEventRequest outside = period("outside", "INCOME_CHANGE", START.minusMonths(5),

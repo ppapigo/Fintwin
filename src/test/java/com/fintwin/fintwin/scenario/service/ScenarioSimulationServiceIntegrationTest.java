@@ -6,6 +6,8 @@ import com.fintwin.fintwin.financialprofile.dto.FinancialProfileUpdateRequest;
 import com.fintwin.fintwin.financialprofile.repository.FinancialProfileRepository;
 import com.fintwin.fintwin.financialprofile.service.FinancialProfileService;
 import com.fintwin.fintwin.scenario.dto.FinancialEventRequest;
+import com.fintwin.fintwin.scenario.dto.MultiScenarioComparisonRequest;
+import com.fintwin.fintwin.scenario.dto.MultiScenarioComparisonResponse;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonRequest;
 import com.fintwin.fintwin.scenario.dto.ScenarioComparisonResponse;
 import com.fintwin.fintwin.simulation.dto.BaselineSimulationRequest;
@@ -61,6 +63,30 @@ class ScenarioSimulationServiceIntegrationTest {
                 .containsExactly("purchase");
         assertThat(after).isEqualTo(before);
         assertThat(financialProfileRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void multiComparisonUsesLatestSnapshotForTheCurrentUserAndPersistsNoResults() {
+        Long firstUser = userRepository.saveAndFlush(User.create()).getId();
+        Long secondUser = userRepository.saveAndFlush(User.create()).getId();
+        financialProfileService.create(firstUser, createRequest("3000000"));
+        financialProfileService.create(secondUser, createRequest("9000000"));
+        FinancialProfileResponse before = financialProfileService.getCurrent(firstUser);
+        long snapshotCount = financialProfileRepository.count();
+        MultiScenarioComparisonRequest request = new MultiScenarioComparisonRequest(YearMonth.of(2026, 8), 12,
+                new BaselineSimulationRequest.Assumptions(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.ZERO, null), List.of(new MultiScenarioComparisonRequest.ScenarioRequest(
+                        "B", "purchase", List.of(new FinancialEventRequest("purchase", "ONE_TIME_EXPENSE",
+                        YearMonth.of(2026, 9), null, null, decimal("1000000"), null, "purchase")))));
+
+        MultiScenarioComparisonResponse response = scenarioSimulationService.compareMultiple(firstUser, request);
+
+        assertThat(response.financialProfileVersion()).isEqualTo(before.version());
+        assertThat(response.baseline().monthlyResults().getFirst().income()).isEqualByComparingTo("3000000.00");
+        assertThat(response.scenarios().getFirst().baselineDelta().netWorthDelta())
+                .isEqualByComparingTo("-1000000.00");
+        assertThat(financialProfileService.getCurrent(firstUser)).isEqualTo(before);
+        assertThat(financialProfileRepository.count()).isEqualTo(snapshotCount);
     }
 
     private ScenarioComparisonRequest request() {
