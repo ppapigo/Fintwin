@@ -1,0 +1,32 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name ${DOMAIN};
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/proxy-routes.conf;
+
+    location = /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "healthy\n";
+    }
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    location ~* \.(?:css|js|mjs|png|jpg|jpeg|gif|svg|ico|webp|woff2?)$ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    location / {
+        expires -1;
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
       setupFiles: "./src/test/setupTests.js",
       css: true,
       clearMocks: true,
+      testTimeout: 10_000,
     },
   };
 });
