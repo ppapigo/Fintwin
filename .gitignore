@@ -43,3 +43,11 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### React / Vite ###
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
