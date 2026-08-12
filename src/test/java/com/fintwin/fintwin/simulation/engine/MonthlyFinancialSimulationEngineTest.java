@@ -1,6 +1,7 @@
 package com.fintwin.fintwin.simulation.engine;
 
 import com.fintwin.fintwin.simulation.domain.MonthlySimulationResult;
+import com.fintwin.fintwin.simulation.domain.MonthlySimulationEffects;
 import com.fintwin.fintwin.simulation.domain.SimulationAssumptions;
 import com.fintwin.fintwin.simulation.domain.SimulationInput;
 import com.fintwin.fintwin.simulation.domain.SimulationSummary;
@@ -226,6 +227,22 @@ class MonthlyFinancialSimulationEngineTest {
                 YearMonth.of(2026, 8), 24))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("horizonMonths must be one of 12, 36, or 60");
+    }
+
+    @Test
+    void appliesExplicitMonthlyEffectsWithoutChangingExistingCallers() {
+        SimulationInput input = input("1000", "1200", "1200", "12", "0", "0", "0", "0", "0");
+
+        SimulationSummary stressed = engine.simulate(input, assumptions("0", "0", "0", "0", "20"),
+                YearMonth.of(2026, 8), 12, MonthlyAdjustmentProvider.none(), yearMonth ->
+                        yearMonth.equals(YearMonth.of(2026, 9))
+                                ? new MonthlySimulationEffects(new BigDecimal("12"), new BigDecimal("-200"))
+                                : MonthlySimulationEffects.none());
+
+        assertThat(stressed.monthlyResults().getFirst().debtInterest()).isEqualByComparingTo("12.00");
+        assertThat(stressed.monthlyResults().get(1).debtInterest()).isEqualByComparingTo("23.84");
+        assertThat(stressed.monthlyResults().get(1).investmentAssets()).isEqualByComparingTo("1000.00");
+        assertThat(stressed.monthlyResults().get(2).investmentAssets()).isEqualByComparingTo("1000.00");
     }
 
     private SimulationInput input(String liquidAssets, String investmentAssets, String debt,

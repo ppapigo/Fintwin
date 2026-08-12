@@ -3,6 +3,7 @@ package com.fintwin.fintwin.simulation.engine;
 import com.fintwin.fintwin.simulation.domain.CumulativeTotals;
 import com.fintwin.fintwin.simulation.domain.MonthlySimulationResult;
 import com.fintwin.fintwin.simulation.domain.MonthlyAdjustments;
+import com.fintwin.fintwin.simulation.domain.MonthlySimulationEffects;
 import com.fintwin.fintwin.simulation.domain.SimulationAssumptions;
 import com.fintwin.fintwin.simulation.domain.SimulationCheckpoint;
 import com.fintwin.fintwin.simulation.domain.SimulationInput;
@@ -26,6 +27,14 @@ public final class MonthlyFinancialSimulationEngine {
     public SimulationSummary simulate(SimulationInput input, SimulationAssumptions assumptions,
                                       YearMonth startYearMonth, int horizonMonths,
                                       MonthlyAdjustmentProvider adjustmentProvider) {
+        return simulate(input, assumptions, startYearMonth, horizonMonths, adjustmentProvider,
+                MonthlySimulationEffectProvider.none());
+    }
+
+    public SimulationSummary simulate(SimulationInput input, SimulationAssumptions assumptions,
+                                      YearMonth startYearMonth, int horizonMonths,
+                                      MonthlyAdjustmentProvider adjustmentProvider,
+                                      MonthlySimulationEffectProvider effectProvider) {
         if (!SUPPORTED_HORIZONS.contains(horizonMonths)) {
             throw new IllegalArgumentException("horizonMonths must be one of 12, 36, or 60");
         }
@@ -34,7 +43,6 @@ public final class MonthlyFinancialSimulationEngine {
         BigDecimal inflationRate = MoneyMath.monthlyRate(assumptions.annualInflationRate());
         BigDecimal depositRate = MoneyMath.monthlyRate(assumptions.annualDepositInterestRate());
         BigDecimal investmentRate = MoneyMath.monthlyRate(assumptions.annualInvestmentReturnRate());
-        BigDecimal debtRate = MoneyMath.monthlyRate(input.annualDebtInterestRate());
 
         BigDecimal liquidAssets = MoneyMath.money(input.initialLiquidAssets());
         BigDecimal investmentAssets = MoneyMath.money(input.initialInvestmentAssets());
@@ -66,6 +74,7 @@ public final class MonthlyFinancialSimulationEngine {
             BigDecimal openingDebt = remainingDebt;
             YearMonth yearMonth = startYearMonth.plusMonths(monthNumber - 1L);
             MonthlyAdjustments adjustments = adjustmentProvider.adjustmentsFor(yearMonth);
+            MonthlySimulationEffects effects = effectProvider.effectsFor(yearMonth);
 
             BigDecimal adjustedIncome = adjustments.incomePaused()
                     ? ZERO : MoneyMath.maxZero(income.add(adjustments.incomeDelta()));
@@ -78,6 +87,11 @@ public final class MonthlyFinancialSimulationEngine {
             BigDecimal plannedInvestment = MoneyMath.maxZero(
                     input.plannedMonthlyInvestment().add(adjustments.investmentContributionDelta()));
 
+            BigDecimal requestedAnnualDebtRate = input.annualDebtInterestRate()
+                    .add(effects.annualDebtInterestRateDelta());
+            BigDecimal effectiveAnnualDebtRate = requestedAnnualDebtRate.signum() < 0
+                    ? BigDecimal.ZERO : requestedAnnualDebtRate;
+            BigDecimal debtRate = MoneyMath.monthlyRate(effectiveAnnualDebtRate);
             BigDecimal debtInterest = openingDebt.signum() > 0
                     ? MoneyMath.applyRate(openingDebt, debtRate) : ZERO;
             BigDecimal totalDebtDue = MoneyMath.money(openingDebt.add(debtInterest));
@@ -119,13 +133,18 @@ public final class MonthlyFinancialSimulationEngine {
             BigDecimal depositInterest = openingLiquidAssets.signum() > 0
                     ? MoneyMath.applyRate(openingLiquidAssets, depositRate) : ZERO;
             BigDecimal investmentReturn = MoneyMath.applyRate(openingInvestmentAssets, investmentRate);
+            BigDecimal investmentValueAdjustment = MoneyMath.money(effects.investmentAssetValueAdjustment());
 
             liquidAssets = MoneyMath.money(cashAfterObligations
                     .subtract(investmentContribution)
                     .add(depositInterest));
             investmentAssets = MoneyMath.money(openingInvestmentAssets
                     .add(investmentContribution)
-                    .add(investmentReturn));
+                    .add(investmentReturn)
+                    .add(investmentValueAdjustment));
+            if (investmentAssets.signum() < 0) {
+                throw new IllegalArgumentException("investment asset adjustment cannot create a negative balance");
+            }
             BigDecimal totalFinancialAssets = MoneyMath.money(liquidAssets.add(investmentAssets));
             BigDecimal netWorth = MoneyMath.money(totalFinancialAssets.subtract(remainingDebt));
 

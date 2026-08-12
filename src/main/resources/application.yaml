@@ -51,3 +51,15 @@ fintwin:
     read-timeout: ${OPENAI_READ_TIMEOUT:15s}
     max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:1200}
     max-response-bytes: ${OPENAI_MAX_RESPONSE_BYTES:65536}
+  market-data:
+    enabled: ${FINTWIN_MARKET_DATA_ENABLED:false}
+    krx-api-key: ${KRX_OPEN_API_KEY:}
+    bok-ecos-api-key: ${BOK_ECOS_API_KEY:}
+    krx-base-url: https://data-dbg.krx.co.kr
+    bok-ecos-base-url: https://ecos.bok.or.kr
+    connect-timeout: ${MARKET_DATA_CONNECT_TIMEOUT:3s}
+    read-timeout: ${MARKET_DATA_READ_TIMEOUT:5s}
+    cache-ttl: ${MARKET_DATA_CACHE_TTL:30m}
+    max-response-bytes: ${MARKET_DATA_MAX_RESPONSE_BYTES:65536}
+    market-observation-stale-days: ${MARKET_DATA_STALE_DAYS:7}
+    base-rate-observation-stale-days: ${BOK_BASE_RATE_STALE_DAYS:45}

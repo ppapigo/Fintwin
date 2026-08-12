@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   ["/twin", "My Financial Twin"],
   ["/what-if", "What-if"],
   ["/scenario-lab", "Scenario Lab"],
+  ["/market-stress", "시장 Stress"],
   ["/goal", "Goal"],
   ["/patterns/import", "거래 분석"],
 ];

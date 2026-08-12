@@ -71,7 +71,7 @@ public record BaselineSimulationResponse(
             boolean negativeAmortization,
             CumulativeTotalsResponse cumulativeTotals
     ) {
-        static MonthlyResultResponse from(MonthlySimulationResult result) {
+        public static MonthlyResultResponse from(MonthlySimulationResult result) {
             return new MonthlyResultResponse(result.monthNumber(), result.yearMonth(), result.income(),
                     result.fixedExpenses(), result.variableExpenses(), result.oneTimeExpense(), result.debtInterest(),
                     result.debtPayment(), result.extraDebtRepayment(), result.principalRepaid(),
@@ -93,7 +93,7 @@ public record BaselineSimulationResponse(
             BigDecimal netWorth,
             CumulativeTotalsResponse cumulativeTotals
     ) {
-        static CheckpointResponse from(SimulationCheckpoint checkpoint) {
+        public static CheckpointResponse from(SimulationCheckpoint checkpoint) {
             return new CheckpointResponse(checkpoint.monthNumber(), checkpoint.yearMonth(), checkpoint.liquidAssets(),
                     checkpoint.investmentAssets(), checkpoint.totalFinancialAssets(), checkpoint.remainingDebt(),
                     checkpoint.netWorth(), CumulativeTotalsResponse.from(checkpoint.cumulativeTotals()));
@@ -109,7 +109,7 @@ public record BaselineSimulationResponse(
             BigDecimal investmentContributions,
             BigDecimal investmentReturn
     ) {
-        static CumulativeTotalsResponse from(CumulativeTotals totals) {
+        public static CumulativeTotalsResponse from(CumulativeTotals totals) {
             return new CumulativeTotalsResponse(totals.income(), totals.consumption(), totals.debtInterest(),
                     totals.principalRepaid(), totals.savingsAllocated(), totals.investmentContributions(),
                     totals.investmentReturn());
